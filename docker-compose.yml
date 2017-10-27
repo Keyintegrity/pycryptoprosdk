@@ -1,0 +1,9 @@
+version: '2'
+
+services:
+  libpycades:
+    build:
+      context: .
+      dockerfile: ./compose/Dockerfile
+    volumes:
+      - /home/uishnik/share:/home/uishnik/share
