@@ -53,8 +53,8 @@ class CertInfo(object):
     def __init__(self, cert_info):
         self.subject = Subject(cert_info.subject.decode('utf-8'))
         self.issuer = Subject(cert_info.issuer.decode('utf-8'))
-        self.not_valid_before = str_to_date(cert_info.notValidBefore.decode('utf-8'))
-        self.not_valid_after = str_to_date(cert_info.notValidAfter.decode('utf-8'))
+        self.valid_from = str_to_date(cert_info.notValidBefore.decode('utf-8'))
+        self.valid_to = str_to_date(cert_info.notValidAfter.decode('utf-8'))
 
 
 class VerificationInfo(object):

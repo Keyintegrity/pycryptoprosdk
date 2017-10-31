@@ -64,11 +64,11 @@ class TestCryptoProSDK(unittest.TestCase):
             'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
         self.assertEqual(
-            cert.not_valid_before,
+            cert.valid_from,
             datetime(2014, 8, 5, 13, 44, 24)
         )
         self.assertEqual(
-            cert.not_valid_after,
+            cert.valid_to,
             datetime(2019, 8, 5, 13, 54, 3)
         )
 
