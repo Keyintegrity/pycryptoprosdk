@@ -13,6 +13,13 @@ class TestCryptoProSDK(unittest.TestCase):
     def setUp(self):
         self.sdk = CryptoProSDK()
 
+    def _get_content(self, file_name):
+        with open(file_name, 'rb') as f:
+            return f.read()
+
+    def _get_content_b64(self, filename):
+        return b64encode(self._get_content(filename))
+
     def test_verify_detached(self):
         with open(os.path.join(files_dir, 'signatures', 'doc.txt'), 'rb') as f:
             content = b64encode(f.read())
@@ -94,6 +101,19 @@ class TestCryptoProSDK(unittest.TestCase):
         cert = self.sdk.get_cert_by_thumbprint('CA', '9e78a331020e528c046ffd57704a21b7d2241cb3')
         self.assertIsNotNone(cert)
         self.assertTrue(self.sdk.delete_certificate('CA', '9e78a331020e528c046ffd57704a21b7d2241cb3'))
+
+    def test_get_signer_certificate_from_signature(self):
+        signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sig'))
+        cert = self.sdk.get_signer_cert_from_signature(signature_content)
+        self.assertIsNotNone(cert)
+        self.assertEqual(
+            cert.subject.as_string(),
+            'E=inav@ivanov.ru, CN=Ivan, L=Ivanovo, C=RU'
+        )
+        self.assertEqual(
+            cert.issuer.as_string(),
+            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
+        )
 
 
 if __name__ == '__main__':

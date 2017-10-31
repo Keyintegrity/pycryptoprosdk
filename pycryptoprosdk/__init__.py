@@ -96,14 +96,17 @@ class CryptoProSDK(object):
         self._delete_certificate = self.lib.DeleteCertificate
         self._delete_certificate.restype = ctypes.c_bool
 
-    def verify_detached(self, file_content, signature):
+        self._get_issuer_cert_from_signature = self.lib.GetSignerCertFromSignature
+        self._get_issuer_cert_from_signature.restype = ctypes.c_bool
+
+    def verify_detached(self, file_content, signature_content):
         """
         Верифицирует отсоединенную подпись
         :param file_content: контент файла, закодированный в base64
-        :param signature: контент подписи, закодированный в base64
+        :param signature_content: контент подписи, закодированный в base64
         :return: структура VerificationInfo
         """
-        res = self._verify_detached(file_content, signature)
+        res = self._verify_detached(file_content, signature_content)
         return VerificationInfo(res)
 
     def create_hash(self, content):
@@ -158,3 +161,14 @@ class CryptoProSDK(object):
         :return: True в случае успеха, False в случае неудачи
         """
         return self._delete_certificate(store_name.encode('utf-8'), thumbprint.encode('utf-8'))
+
+    def get_signer_cert_from_signature(self, signature_content):
+        """
+        Извлекает сертификат подписанта из подписи
+        :param signature_content: контент подписи,  в base64
+        :return: объект CertInfo
+        """
+        cert_info = _CertInfo()
+        res = self._get_issuer_cert_from_signature(signature_content, ctypes.byref(cert_info))
+        if res:
+            return CertInfo(cert_info)

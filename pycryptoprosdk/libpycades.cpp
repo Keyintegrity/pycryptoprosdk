@@ -4,6 +4,7 @@
 #include <string.h>
 
 #define GR3411LEN  64
+#define MY_ENCODING_TYPE  (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 
 
 typedef struct {
@@ -43,7 +44,7 @@ void FileTimeToString(FILETIME *fileTime, char *stBuffer)
     );
 }
 
-CERTIFICATE_INFO GetCerInfo(PCERT_INFO pCertInfo){
+CERTIFICATE_INFO GetCertInfo(PCERT_INFO pCertInfo){
     CERTIFICATE_INFO certInfo;
 
     CertNameToStr(
@@ -148,7 +149,7 @@ extern "C" {
             return false;
         }
 
-        certInfo = GetCerInfo(pCertContext->pCertInfo);
+        certInfo = GetCertInfo(pCertContext->pCertInfo);
 
         CertFreeCertificateContext(pCertContext);
 
@@ -191,7 +192,7 @@ extern "C" {
             return false;
         }
 
-        certInfo = GetCerInfo(pCertContext->pCertInfo);
+        certInfo = GetCertInfo(pCertContext->pCertInfo);
 
         CertFreeCertificateContext(pCertContext);
 
@@ -391,7 +392,7 @@ extern "C" {
         MessageSizeArray[0] = nDestinationFileSize;
 
         CRYPT_VERIFY_MESSAGE_PARA cryptVerifyPara = { sizeof(cryptVerifyPara) };
-        cryptVerifyPara.dwMsgAndCertEncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
+        cryptVerifyPara.dwMsgAndCertEncodingType = MY_ENCODING_TYPE;
 
         CADES_VERIFICATION_PARA cadesVerifyPara = { sizeof(cadesVerifyPara) };
         cadesVerifyPara.dwCadesType = CADES_BES;
@@ -418,11 +419,106 @@ extern "C" {
 
         if (pVerifyInfo) {
             res.verificationStatus = pVerifyInfo->dwStatus;
-            res.certInfo = GetCerInfo(pVerifyInfo->pSignerCert->pCertInfo);
+            res.certInfo = GetCertInfo(pVerifyInfo->pSignerCert->pCertInfo);
 
             CadesFreeVerificationInfo(pVerifyInfo);
         }
 
         return res;
+    }
+
+    bool GetSignerCertFromSignature(const char *base64SignContent, CERTIFICATE_INFO &certInfo){
+        DWORD nDestinationSignSize = 0;
+        if (!CryptStringToBinary(
+            base64SignContent,
+            strlen(base64SignContent),
+            CRYPT_STRING_BASE64,
+            NULL,
+            &nDestinationSignSize,
+            0,
+            0
+        )){
+            HandleError("GetSignerCertFromSignature_sign_first failed");
+            return false;
+        }
+
+        BYTE pDecodedSignContent[nDestinationSignSize];
+        if(!CryptStringToBinary(
+            base64SignContent,
+            strlen(base64SignContent),
+            CRYPT_STRING_BASE64,
+            pDecodedSignContent,
+            &nDestinationSignSize,
+            0,
+            0
+        )){
+            HandleError("GetSignerCertFromSignature_sign_last failed");
+            return false;
+        };
+
+        HCRYPTMSG hMsg;
+
+        hMsg = CryptMsgOpenToDecode(
+            MY_ENCODING_TYPE,
+            0,
+            0,
+            NULL,
+            NULL,
+            NULL
+        );
+
+        if (!hMsg){
+            HandleError("OpenToDecode failed");
+            return false;
+        }
+
+        if(!(CryptMsgUpdate(
+            hMsg,
+            pDecodedSignContent,
+            nDestinationSignSize,
+            FALSE)))
+        {
+            HandleError("MsgUpdate failed");
+            return false;
+        }
+
+        DWORD cbSignerCertInfo;
+
+        if(!CryptMsgGetParam(
+            hMsg,
+            CMSG_CERT_PARAM,
+            0,
+            NULL,
+            &cbSignerCertInfo))
+        {
+            HandleError("Verify SIGNER_CERT_INFO #1 failed.");
+            return false;
+        }
+
+        BYTE pCert[cbSignerCertInfo];
+
+        if(!(CryptMsgGetParam(
+            hMsg,
+            CMSG_CERT_PARAM,
+            0,
+            pCert,
+            &cbSignerCertInfo)))
+
+        {
+            HandleError("Verify SIGNER_CERT_INFO #2 failed");
+            return false;
+        }
+
+        PCCERT_CONTEXT pCertContext;
+        pCertContext = CertCreateCertificateContext(X509_ASN_ENCODING, pCert, cbSignerCertInfo);
+        if (!pCertContext) {
+            HandleError("Can't get cert context.");
+            return false;
+        }
+
+        certInfo = GetCertInfo(pCertContext->pCertInfo);
+        CertFreeCertificateContext(pCertContext);
+
+        return true;
     }
 }
