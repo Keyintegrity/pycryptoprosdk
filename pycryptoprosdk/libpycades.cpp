@@ -2,6 +2,7 @@
 #include <WinCryptEx.h>
 #include <cades.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define GR3411LEN  64
 #define MY_ENCODING_TYPE  (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
@@ -429,6 +430,7 @@ extern "C" {
 
     bool GetSignerCertFromSignature(const char *base64SignContent, CERTIFICATE_INFO &certInfo){
         DWORD nDestinationSignSize = 0;
+
         if (!CryptStringToBinary(
             base64SignContent,
             strlen(base64SignContent),
@@ -486,7 +488,7 @@ extern "C" {
 
         if(!CryptMsgGetParam(
             hMsg,
-            CMSG_CERT_PARAM,
+            CMSG_SIGNER_CERT_INFO_PARAM,
             0,
             NULL,
             &cbSignerCertInfo))
@@ -495,29 +497,52 @@ extern "C" {
             return false;
         }
 
-        BYTE pCert[cbSignerCertInfo];
+        PCERT_INFO pSignerCertInfo;
+        if(!(pSignerCertInfo = (PCERT_INFO) malloc(cbSignerCertInfo)))
+        {
+            HandleError("Verify memory allocation failed.");
+            return false;
+        }
 
         if(!(CryptMsgGetParam(
             hMsg,
-            CMSG_CERT_PARAM,
+            CMSG_SIGNER_CERT_INFO_PARAM,
             0,
-            pCert,
+            pSignerCertInfo,
             &cbSignerCertInfo)))
-
         {
             HandleError("Verify SIGNER_CERT_INFO #2 failed");
             return false;
         }
 
-        PCCERT_CONTEXT pCertContext;
-        pCertContext = CertCreateCertificateContext(X509_ASN_ENCODING, pCert, cbSignerCertInfo);
-        if (!pCertContext) {
-            HandleError("Can't get cert context.");
+        HCERTSTORE hStoreHandle;
+
+        hStoreHandle = CertOpenStore(
+            CERT_STORE_PROV_MSG,
+            MY_ENCODING_TYPE,
+            NULL,
+            0,
+            hMsg
+        );
+        if (!hStoreHandle){
+            HandleError("Verify open store failed");
             return false;
         }
 
-        certInfo = GetCertInfo(pCertContext->pCertInfo);
-        CertFreeCertificateContext(pCertContext);
+        PCCERT_CONTEXT pSignerCertContext;
+        pSignerCertContext = CertGetSubjectCertificateFromStore(
+            hStoreHandle,
+            MY_ENCODING_TYPE,
+            pSignerCertInfo
+        );
+        if (!pSignerCertContext){
+            HandleError("CertGetSubjectCertificateFromStore failed");
+            return false;
+        }
+
+        certInfo = GetCertInfo(pSignerCertContext->pCertInfo);
+        CertFreeCertificateContext(pSignerCertContext);
+        CryptMsgClose(hMsg);
 
         return true;
     }
