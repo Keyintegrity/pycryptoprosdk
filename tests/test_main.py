@@ -78,6 +78,7 @@ class TestCryptoProSDK(unittest.TestCase):
             cert.valid_to,
             datetime(2019, 8, 5, 13, 54, 3)
         )
+        self.assertEqual(cert.thumbprint.lower(), '046255290b0eb1cdd1797d9ab8c81f699e3687f3')
 
     def test_get_cert_by_subject(self):
         cert = self.sdk.get_cert_by_subject('ROOT', 'CRYPTO-PRO Test Center 2')

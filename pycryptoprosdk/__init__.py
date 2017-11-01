@@ -9,7 +9,8 @@ class _CertInfo(ctypes.Structure):
         ('subject', ctypes.c_char * 1024),
         ('issuer', ctypes.c_char * 1024),
         ('notValidBefore', ctypes.c_char * 19),
-        ('notValidAfter', ctypes.c_char * 19)
+        ('notValidAfter', ctypes.c_char * 19),
+        ('thumbprint', ctypes.c_char * 41)
     ]
 
 
@@ -55,6 +56,7 @@ class CertInfo(object):
         self.issuer = Subject(cert_info.issuer.decode('utf-8'))
         self.valid_from = str_to_date(cert_info.notValidBefore.decode('utf-8'))
         self.valid_to = str_to_date(cert_info.notValidAfter.decode('utf-8'))
+        self.thumbprint = cert_info.thumbprint.decode('utf-8')
 
 
 class VerificationInfo(object):

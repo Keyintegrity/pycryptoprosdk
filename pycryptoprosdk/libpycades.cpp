@@ -13,6 +13,7 @@ typedef struct {
     char issuer[1024];
     char notValidBefore[19];
     char notValidAfter[19];
+    char thumbprint[41];
 } CERTIFICATE_INFO;
 
 typedef struct {
@@ -45,12 +46,12 @@ void FileTimeToString(FILETIME *fileTime, char *stBuffer)
     );
 }
 
-CERTIFICATE_INFO GetCertInfo(PCERT_INFO pCertInfo){
+CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
     CERTIFICATE_INFO certInfo;
 
     CertNameToStr(
         X509_ASN_ENCODING,
-        &pCertInfo->Subject,
+        &pCertContext->pCertInfo->Subject,
         CERT_X500_NAME_STR,
         certInfo.subject,
         1024
@@ -58,21 +59,49 @@ CERTIFICATE_INFO GetCertInfo(PCERT_INFO pCertInfo){
 
     CertNameToStr(
         X509_ASN_ENCODING,
-        &pCertInfo->Issuer,
+        &pCertContext->pCertInfo->Issuer,
         CERT_X500_NAME_STR,
         certInfo.issuer,
         1024
     );
 
     FileTimeToString(
-        &pCertInfo->NotBefore,
+        &pCertContext->pCertInfo->NotBefore,
         certInfo.notValidBefore
     );
 
     FileTimeToString(
-        &pCertInfo->NotAfter,
+        &pCertContext->pCertInfo->NotAfter,
         certInfo.notValidAfter
     );
+
+    DWORD dataSize;
+    CertGetCertificateContextProperty(
+        pCertContext,
+        CERT_HASH_PROP_ID,
+        NULL,
+        &dataSize
+    );
+
+    BYTE hash[dataSize];
+    CertGetCertificateContextProperty(
+        pCertContext,
+        CERT_HASH_PROP_ID,
+        hash,
+        &dataSize
+    );
+
+    DWORD hashStringSize;
+    CryptBinaryToString(
+        hash,
+        dataSize,
+        CRYPT_STRING_HEX,
+        NULL,
+        &hashStringSize
+    );
+
+    char hashString[hashStringSize];
+    CryptBinaryToString(hash, dataSize, CRYPT_STRING_HEX, certInfo.thumbprint, &hashStringSize);
 
     return certInfo;
 }
@@ -150,7 +179,7 @@ extern "C" {
             return false;
         }
 
-        certInfo = GetCertInfo(pCertContext->pCertInfo);
+        certInfo = GetCertInfo(pCertContext);
 
         CertFreeCertificateContext(pCertContext);
 
@@ -193,7 +222,7 @@ extern "C" {
             return false;
         }
 
-        certInfo = GetCertInfo(pCertContext->pCertInfo);
+        certInfo = GetCertInfo(pCertContext);
 
         CertFreeCertificateContext(pCertContext);
 
@@ -420,7 +449,7 @@ extern "C" {
 
         if (pVerifyInfo) {
             res.verificationStatus = pVerifyInfo->dwStatus;
-            res.certInfo = GetCertInfo(pVerifyInfo->pSignerCert->pCertInfo);
+            res.certInfo = GetCertInfo(pVerifyInfo->pSignerCert);
 
             CadesFreeVerificationInfo(pVerifyInfo);
         }
@@ -540,7 +569,7 @@ extern "C" {
             return false;
         }
 
-        certInfo = GetCertInfo(pSignerCertContext->pCertInfo);
+        certInfo = GetCertInfo(pSignerCertContext);
         CertFreeCertificateContext(pSignerCertContext);
         CryptMsgClose(hMsg);
 
