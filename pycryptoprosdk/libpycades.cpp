@@ -367,7 +367,9 @@ extern "C" {
             return res;
         }
 
-        BYTE pDecodedFileContent[nDestinationFileSize];
+        BYTE* pDecodedFileContent;
+        pDecodedFileContent = (BYTE *) malloc(nDestinationFileSize);
+
         if(!CryptStringToBinary(
             base64FileContent,
             strlen(base64FileContent),
@@ -398,7 +400,9 @@ extern "C" {
             return res;
         }
 
-        BYTE pDecodedSignContent[nDestinationSignSize];
+        BYTE* pDecodedSignContent;
+        pDecodedSignContent = (BYTE *) malloc(nDestinationSignSize);
+
         if(!CryptStringToBinary(
             base64SignContent,
             strlen(base64SignContent),
