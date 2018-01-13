@@ -458,6 +458,12 @@ extern "C" {
             CadesFreeVerificationInfo(pVerifyInfo);
         }
 
+        if (pDecodedFileContent)
+            free(pDecodedFileContent);
+
+        if(pDecodedSignContent)
+            free(pDecodedSignContent);
+
         return res;
     }
 
@@ -572,6 +578,9 @@ extern "C" {
             HandleError("CertGetSubjectCertificateFromStore failed");
             return false;
         }
+
+        if (pSignerCertInfo)
+            free(pSignerCertInfo);
 
         certInfo = GetCertInfo(pSignerCertContext);
         CertFreeCertificateContext(pSignerCertContext);
