@@ -8,7 +8,7 @@
 ```
 ln -s /opt/cprocsp/lib/amd64/libcades.so.2.0.0 /opt/cprocsp/lib/amd64/libcades.so
 ```
-Пример установки пакетов можно посмотреть в pycryptoprosdk/compose/Dockerfile.
+Пример установки пакетов можно посмотреть в [pycryptoprosdk/compose/Dockerfile](https://github.com/Keyintegrity/pycryptoprosdk/blob/master/compose/Dockerfile).
 
 4. Установить pycryptoprosdk:
 ```
