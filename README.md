@@ -34,7 +34,7 @@ res = sdk.verify_detached(content, signature)
 # создание хэша файла по ГОСТу:
 with open('doc.txt'), 'rb') as f:
     content = f.read()
-hash = sdk.create_hash(content)
+h = sdk.create_hash(content)
 
 
 # поиск сертификата в хранилище MY по отпечатку:
