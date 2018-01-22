@@ -100,7 +100,6 @@ CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
         &hashStringSize
     );
 
-    char hashString[hashStringSize];
     CryptBinaryToString(hash, dataSize, CRYPT_STRING_HEX, certInfo.thumbprint, &hashStringSize);
 
     return certInfo;
@@ -503,9 +502,9 @@ extern "C" {
             MY_ENCODING_TYPE,
             0,
             0,
-            NULL,
-            NULL,
-            NULL
+            0,
+            0,
+            0
         );
 
         if (!hMsg){
@@ -559,7 +558,7 @@ extern "C" {
         hStoreHandle = CertOpenStore(
             CERT_STORE_PROV_MSG,
             MY_ENCODING_TYPE,
-            NULL,
+            0,
             0,
             hMsg
         );
