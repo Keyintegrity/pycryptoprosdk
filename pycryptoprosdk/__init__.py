@@ -1,5 +1,6 @@
 import ctypes
 import os
+import re
 from distutils.sysconfig import get_config_var
 from pycryptoprosdk.utils import str_to_date
 
@@ -30,12 +31,8 @@ class Subject(object):
         return self.subject_string
 
     def as_dict(self):
-        return self._parse(self.subject_string)
-
-    @staticmethod
-    def _parse(line):
         data = {}
-        for item in line.split(', '):
+        for item in re.compile(',(?<!^)\s+(?=[A-Z])(?!.\s)').split(self.subject_string):
             try:
                 k, v = item.split('=')
                 data[k] = v
