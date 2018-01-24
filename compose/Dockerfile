@@ -5,10 +5,10 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    lsb-base alien lsb-core \
-    nano \
     g++ \
+    lsb-base alien lsb-core \
     mc \
+    nano \
     python-pip \
     python-mysqldb
 

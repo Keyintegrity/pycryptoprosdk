@@ -24,7 +24,7 @@ class TestCryptoProSDK(unittest.TestCase):
         with open(os.path.join(files_dir, 'signatures', 'doc.txt'), 'rb') as f:
             content = b64encode(f.read())
 
-        with open(os.path.join(files_dir, 'signatures', 'doc.txt.sig'), 'rb') as f:
+        with open(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'), 'rb') as f:
             signature = f.read()
 
         res = self.sdk.verify_detached(content, signature)
@@ -104,17 +104,24 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertTrue(self.sdk.delete_certificate('CA', '9e78a331020e528c046ffd57704a21b7d2241cb3'))
 
     def test_get_signer_certificate_from_signature(self):
-        signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sig'))
+        signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
         cert = self.sdk.get_signer_cert_from_signature(signature_content)
         self.assertIsNotNone(cert)
-        self.assertEqual(
-            cert.subject.as_string(),
-            'E=inav@ivanov.ru, CN=Ivan, L=Ivanovo, C=RU'
-        )
         self.assertEqual(
             cert.issuer.as_string(),
             'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
+        self.assertEqual(
+            cert.subject.as_string(),
+            'CN=Иванов Иван Иванович, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
+        )
+        subject_dict = cert.subject.as_dict()
+        self.assertEqual(subject_dict['CN'], 'Иванов Иван Иванович')
+        self.assertEqual(subject_dict['INN'], '123456789047')
+        self.assertEqual(subject_dict['OGRN'], '1123300000053')
+        self.assertEqual(subject_dict['SNILS'], '12345678901')
+        self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
+        self.assertEqual(subject_dict['L'], 'Город')
 
 
 if __name__ == '__main__':

@@ -6,4 +6,4 @@ services:
       context: .
       dockerfile: ./compose/Dockerfile
     volumes:
-      - /home/uishnik/share:/home/uishnik/share
+      - ./tests/files/signatures:/build/pycryptoprosdk/tests/files/signatures
