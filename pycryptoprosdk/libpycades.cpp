@@ -651,4 +651,72 @@ extern "C" {
 
         return true;
     }
+
+    bool InstallCrl(const char *storeName, const char *crlData){
+        DWORD nDestinationSize = 0;
+        if (!CryptStringToBinary(
+            crlData,
+            strlen(crlData),
+            CRYPT_STRING_BASE64,
+            NULL,
+            &nDestinationSize,
+            0,
+            0
+        )){
+            HandleError("InstallCrl: CryptStringToBinary_first failed");
+            return false;
+        }
+
+        BYTE pDecodedCrlData[nDestinationSize];
+        if(!CryptStringToBinary(
+            crlData,
+            strlen(crlData),
+            CRYPT_STRING_BASE64,
+            pDecodedCrlData,
+            &nDestinationSize,
+            0,
+            0
+        )){
+            HandleError("InstallCrl: CryptStringToBinary_last failed");
+            return false;
+        };
+
+        PCCRL_CONTEXT pCrlContext;
+
+        pCrlContext = CertCreateCRLContext(
+            X509_ASN_ENCODING,
+            pDecodedCrlData,
+            nDestinationSize
+        );
+
+        if (!pCrlContext){
+            HandleError("InstallCrl: can't create crl context");
+            return false;
+        }
+
+        HCERTSTORE hStore;
+        hStore = CertOpenSystemStore(0, storeName);
+        if (!hStore){
+            HandleError("InstallCrl: CertOpenSystemStore failed");
+            return false;
+        }
+
+        if (!CertAddCRLContextToStore(
+                hStore,
+                pCrlContext,
+                CERT_STORE_ADD_REPLACE_EXISTING,
+                NULL
+            )
+        )
+        {
+            HandleError("InstallCrl: CertAddCRLContextToStore failed");
+            return false;
+        }
+
+
+        CertFreeCRLContext(pCrlContext);
+        CertCloseStore(hStore, 0);
+
+        return true;
+    }
 }

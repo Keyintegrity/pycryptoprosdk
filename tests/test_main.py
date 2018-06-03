@@ -131,6 +131,11 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertEqual(res.this_update, datetime(2018, 5, 24, 10, 41, 10))
         self.assertEqual(res.next_update, datetime(2018, 6, 23, 10, 41, 10))
 
+    def test_install_crl(self):
+        crl_content = self._get_content(os.path.join(files_dir, 'certs', 'guc.crl'))
+        res = self.sdk.install_crl('CA', b64encode(crl_content))
+        self.assertTrue(res)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -116,6 +116,9 @@ class CryptoProSDK(object):
         self._get_crl_data = self.lib.GetCrlData
         self._get_crl_data.restype = ctypes.c_bool
 
+        self._install_crl = self.lib.InstallCrl
+        self._install_crl.restype = ctypes.c_bool
+
     def verify_detached(self, file_content, signature_content):
         """
         Верифицирует отсоединенную подпись
@@ -195,3 +198,12 @@ class CryptoProSDK(object):
         res = self._get_crl_data(crl_content, ctypes.byref(crl_info))
         if res:
             return CrlInfo(crl_info)
+
+    def install_crl(self, store_name, crl_content):
+        """
+        Устанавливает список отзыва в хранилище сертификатов
+        :param store_name: имя хранилища сертификатов
+        :param crl_content: контент списка отзыва, закодированный в base64
+        :return: True в случае успеха, False в случае неудачи
+        """
+        return self._install_crl(store_name.encode('utf-8'), crl_content)
