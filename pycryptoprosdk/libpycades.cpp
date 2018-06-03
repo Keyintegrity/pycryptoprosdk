@@ -22,6 +22,12 @@ typedef struct {
     CERTIFICATE_INFO certInfo;
 } VERIFICATION_INFO;
 
+typedef struct {
+    char issuer[1024];
+    char thisUpdate[19];
+    char nextUpdate[19];
+} CRL_DATA;
+
 
 void HandleError(const char *errorMsg)
 {
@@ -498,14 +504,7 @@ extern "C" {
 
         HCRYPTMSG hMsg;
 
-        hMsg = CryptMsgOpenToDecode(
-            MY_ENCODING_TYPE,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
+        hMsg = CryptMsgOpenToDecode(MY_ENCODING_TYPE, 0, 0, 0, 0, 0);
 
         if (!hMsg){
             HandleError("OpenToDecode failed");
@@ -584,6 +583,71 @@ extern "C" {
         certInfo = GetCertInfo(pSignerCertContext);
         CertFreeCertificateContext(pSignerCertContext);
         CryptMsgClose(hMsg);
+
+        return true;
+    }
+
+    bool GetCrlData(const char *base64CrlContent, CRL_DATA &crlData){
+        DWORD nDestinationSize = 0;
+        if (!CryptStringToBinary(
+            base64CrlContent,
+            strlen(base64CrlContent),
+            CRYPT_STRING_BASE64,
+            NULL,
+            &nDestinationSize,
+            0,
+            0
+        )){
+            HandleError("GetCrlData: CryptStringToBinary_first failed");
+            return false;
+        }
+
+        BYTE pDecodedCrlData[nDestinationSize];
+        if(!CryptStringToBinary(
+            base64CrlContent,
+            strlen(base64CrlContent),
+            CRYPT_STRING_BASE64,
+            pDecodedCrlData,
+            &nDestinationSize,
+            0,
+            0
+        )){
+            HandleError("GetCrlData: CryptStringToBinary_last failed");
+            return false;
+        };
+
+        PCCRL_CONTEXT pCrlContext;
+
+        pCrlContext = CertCreateCRLContext(
+            MY_ENCODING_TYPE,
+            pDecodedCrlData,
+            nDestinationSize
+        );
+
+        if (!pCrlContext){
+            HandleError("GetCrlData: can't create crl context");
+            return false;
+        }
+
+        CertNameToStr(
+            X509_ASN_ENCODING,
+            &pCrlContext->pCrlInfo->Issuer,
+            CERT_X500_NAME_STR,
+            crlData.issuer,
+            1024
+        );
+
+        FileTimeToString(
+            &pCrlContext->pCrlInfo->ThisUpdate,
+            crlData.thisUpdate
+        );
+
+        FileTimeToString(
+            &pCrlContext->pCrlInfo->NextUpdate,
+            crlData.nextUpdate
+        );
+
+        CertFreeCRLContext(pCrlContext);
 
         return true;
     }

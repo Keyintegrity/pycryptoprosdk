@@ -5,5 +5,3 @@ services:
     build:
       context: .
       dockerfile: ./compose/Dockerfile
-    volumes:
-      - ./tests/files/signatures:/build/pycryptoprosdk/tests/files/signatures

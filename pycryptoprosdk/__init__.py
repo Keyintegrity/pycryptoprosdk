@@ -23,6 +23,14 @@ class _VerificationInfo(ctypes.Structure):
     ]
 
 
+class _CrlInfo(ctypes.Structure):
+    _fields_ = [
+        ('issuer', ctypes.c_char * 1024),
+        ('thisUpdate', ctypes.c_char * 19),
+        ('nextUpdate', ctypes.c_char * 19)
+    ]
+
+
 class Subject(object):
     def __init__(self, subject_string):
         self.subject_string = subject_string
@@ -70,6 +78,13 @@ class VerificationInfo(object):
         return CertInfo(self._verification_info.certInfo)
 
 
+class CrlInfo(object):
+    def __init__(self, crl_info):
+        self.issuer = Subject(crl_info.issuer.decode('utf-8'))
+        self.this_update = str_to_date(crl_info.thisUpdate.decode('utf-8'))
+        self.next_update = str_to_date(crl_info.nextUpdate.decode('utf-8'))
+
+
 class CryptoProSDK(object):
     def __init__(self):
         suffix = get_config_var('EXT_SUFFIX') or ''
@@ -98,6 +113,9 @@ class CryptoProSDK(object):
         self._get_issuer_cert_from_signature = self.lib.GetSignerCertFromSignature
         self._get_issuer_cert_from_signature.restype = ctypes.c_bool
 
+        self._get_crl_data = self.lib.GetCrlData
+        self._get_crl_data.restype = ctypes.c_bool
+
     def verify_detached(self, file_content, signature_content):
         """
         Верифицирует отсоединенную подпись
@@ -110,7 +128,7 @@ class CryptoProSDK(object):
 
     def create_hash(self, content):
         """
-        Вычисляет хэш сообщения по ГОСТу
+        Вычисляет хэш сообщения по ГОСТу Р 34.11-94
         :param content: сообщение
         :return: хэш-значение
         """
@@ -165,9 +183,15 @@ class CryptoProSDK(object):
         """
         Извлекает сертификат подписанта из подписи
         :param signature_content: контент подписи,  в base64
-        :return: объект CertInfo
+        :return: объект CrlInfo
         """
         cert_info = _CertInfo()
         res = self._get_issuer_cert_from_signature(signature_content, ctypes.byref(cert_info))
         if res:
             return CertInfo(cert_info)
+
+    def get_crl_data(self, crl_content):
+        crl_info = _CrlInfo()
+        res = self._get_crl_data(crl_content.encode('utf-8'), ctypes.byref(crl_info))
+        if res:
+            return CrlInfo(crl_info)

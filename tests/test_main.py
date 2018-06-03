@@ -123,6 +123,14 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
         self.assertEqual(subject_dict['L'], 'Город')
 
+    def test_get_crl_data(self):
+        crl_content = self._get_content(os.path.join(files_dir, 'certs', 'guc.crl'))
+        res = self.sdk.get_crl_data(b64encode(crl_content).decode('utf-8'))
+
+        self.assertEqual(res.issuer.as_dict()['CN'], 'Головной удостоверяющий центр')
+        self.assertEqual(res.this_update, datetime(2018, 5, 24, 10, 41, 10))
+        self.assertEqual(res.next_update, datetime(2018, 6, 23, 10, 41, 10))
+
 
 if __name__ == '__main__':
     unittest.main()
