@@ -168,7 +168,7 @@ class CryptoProSDK(object):
         :param cert_content: контент сертификата, закодированный в base64
         :return: True в случае успеха, False в случае неудачи
         """
-        return self._install_certificate(store_name.encode('utf-8'), cert_content.encode('utf-8'))
+        return self._install_certificate(store_name.encode('utf-8'), cert_content)
 
     def delete_certificate(self, store_name, thumbprint):
         """
@@ -192,6 +192,6 @@ class CryptoProSDK(object):
 
     def get_crl_data(self, crl_content):
         crl_info = _CrlInfo()
-        res = self._get_crl_data(crl_content.encode('utf-8'), ctypes.byref(crl_info))
+        res = self._get_crl_data(crl_content, ctypes.byref(crl_info))
         if res:
             return CrlInfo(crl_info)

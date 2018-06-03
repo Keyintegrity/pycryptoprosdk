@@ -97,7 +97,7 @@ class TestCryptoProSDK(unittest.TestCase):
         with open(os.path.join(files_dir, 'certs', 'uc_1_is_guc.cer'), 'rb') as f:
             cert_str = f.read()
 
-        self.sdk.install_certificate('CA', b64encode(cert_str).decode('utf-8'))
+        self.sdk.install_certificate('CA', b64encode(cert_str))
 
         cert = self.sdk.get_cert_by_thumbprint('CA', '9e78a331020e528c046ffd57704a21b7d2241cb3')
         self.assertIsNotNone(cert)
@@ -125,7 +125,7 @@ class TestCryptoProSDK(unittest.TestCase):
 
     def test_get_crl_data(self):
         crl_content = self._get_content(os.path.join(files_dir, 'certs', 'guc.crl'))
-        res = self.sdk.get_crl_data(b64encode(crl_content).decode('utf-8'))
+        res = self.sdk.get_crl_data(b64encode(crl_content))
 
         self.assertEqual(res.issuer.as_dict()['CN'], 'Головной удостоверяющий центр')
         self.assertEqual(res.this_update, datetime(2018, 5, 24, 10, 41, 10))
