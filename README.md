@@ -50,7 +50,7 @@ cert = sdk.get_cert_by_subject('MY', 'CRYPTO-PRO Test Center 2')
 # установка сертификата в хранилище MY:
 with open('certificate.cer'), 'rb') as f:
     cert_content = f.read()
-sdk.install_certificate('MY', b64encode(cert_str))
+sdk.install_certificate('MY', b64encode(cert_content))
 
 
 # удаление сертификата из хранилища MY по отпечатку:
