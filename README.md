@@ -66,5 +66,5 @@ cert = sdk.get_signer_cert_from_signature(signature_content)
 Сборка образа и запуск тестов:
 
 ```
-docker-compose build
+docker-compose up --build --force-recreate
 ```

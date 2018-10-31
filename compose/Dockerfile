@@ -32,5 +32,7 @@ WORKDIR /build/pycryptoprosdk
 ENV TERM xterm
 ENV TZ=Europe/Moscow
 
-RUN python ./setup.py build_ext --inplace
-RUN python -m unittest discover
+COPY ./compose/docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
