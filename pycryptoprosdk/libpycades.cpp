@@ -1,11 +1,11 @@
+#include <string.h>
+#include <string>
 #include <stdio.h>
 #include <WinCryptEx.h>
 #include <cades.h>
-#include <string.h>
 #include <stdlib.h>
 
-#define GR3411LEN  64
-#define MY_ENCODING_TYPE  (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
+#define MY_ENCODING_TYPE (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 
 
 typedef struct {
@@ -44,6 +44,25 @@ void FileTimeToString(FILETIME *fileTime, char *stBuffer)
         systemTime.wMinute,
         systemTime.wSecond
     );
+}
+
+ALG_ID GetAlgId(const char *algString){
+    std::string str(algString);
+
+    if ("CALG_GR3411" == str) {
+        return CALG_GR3411;
+    }
+
+    if ("CALG_GR3411_2012_256" == str) {
+        return CALG_GR3411_2012_256;
+    }
+
+    if ("CALG_GR3411_2012_512" == str) {
+        return CALG_GR3411_2012_512;
+    }
+
+    printf("GetAlgId failed: unexpected algorithm '%s'\n", str.c_str());
+    exit(1);
 }
 
 CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
@@ -106,7 +125,7 @@ CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
 }
 
 extern "C" {
-    bool CreateHash(const char *message, unsigned int length, char *hashArray){
+    bool CreateHash(const char *message, unsigned int length, const char *algString, char *hashArray){
         HCRYPTPROV hProv;
         HCRYPTHASH hHash = 0;
         DWORD cbHash = 0;
@@ -122,7 +141,9 @@ extern "C" {
             return false;
         }
 
-        if (!CryptCreateHash(hProv, CALG_GR3411, 0, 0, &hHash)){
+        ALG_ID algId = GetAlgId(algString);
+
+        if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)){
             CryptReleaseContext(hProv, 0);
             HandleError("CryptCreateHash failed");
             return false;
@@ -136,8 +157,8 @@ extern "C" {
             HandleError("CryptHashData failed");
         }
 
-        BYTE rgbHash[GR3411LEN];
-        cbHash = GR3411LEN;
+        cbHash = 64;
+        BYTE rgbHash[cbHash];
 
         if (!CryptGetHashParam(hHash, HP_HASHVAL, rgbHash, &cbHash, 0)){
             CryptDestroyHash(hHash);

@@ -108,14 +108,28 @@ class CryptoProSDK(object):
         res = self._verify_detached(file_content, signature_content)
         return VerificationInfo(res)
 
-    def create_hash(self, content):
+    def create_hash(self, content, alg):
         """
         Вычисляет хэш сообщения по ГОСТу
         :param content: сообщение
+        :param alg: алгоритм хэширования.
+            Возможные значения: 'CALG_GR3411', 'CALG_GR3411_2012_256', 'CALG_GR3411_2012_512'
         :return: хэш-значение
         """
-        h = (ctypes.c_char*64)()
-        res = self._create_hash(content, len(content), ctypes.byref(h))
+        available_alg = (
+            'CALG_GR3411',
+            'CALG_GR3411_2012_256',
+            'CALG_GR3411_2012_512',
+        )
+        if alg not in available_alg:
+            raise ValueError('Unexpected algorithm \'{}\''.format(alg))
+
+        res_length = 64
+        if alg == 'CALG_GR3411_2012_512':
+            res_length = 128
+
+        h = (ctypes.c_char*res_length)()
+        res = self._create_hash(content, len(content), alg.encode('utf-8'), ctypes.byref(h))
         if res:
             return h.value.upper().decode('utf-8')
 

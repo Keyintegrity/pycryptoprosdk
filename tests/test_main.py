@@ -42,12 +42,12 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertIsNone(res.cert)
         self.assertEqual(res.error, CRYPT_E_INVALID_MSG_TYPE)
 
-    def test_hash(self):
+    def test_hash_CALG_GR3411(self):
         with open(os.path.join(files_dir, 'signatures', 'doc.txt'), 'rb') as f:
             content = f.read()
 
         self.assertEqual(
-            self.sdk.create_hash(content),
+            self.sdk.create_hash(content, 'CALG_GR3411'),
             '445888F2DEA25B3AD0187186CC18BD74D79CEF78498EF308755459AFE4552EBA'
         )
 
@@ -55,8 +55,26 @@ class TestCryptoProSDK(unittest.TestCase):
             content = f.read()
 
         self.assertEqual(
-            self.sdk.create_hash(content),
+            self.sdk.create_hash(content, 'CALG_GR3411'),
             '799025F048414BD20681D41EDFEE3158D7D5B14DDCB17912E38DE0B620C353B7'
+        )
+
+    def test_hash_CALG_GR3411_2012_256(self):
+        with open(os.path.join(files_dir, 'signatures', 'doc.txt'), 'rb') as f:
+            content = f.read()
+
+        self.assertEqual(
+            self.sdk.create_hash(content, 'CALG_GR3411_2012_256'),
+            'AE943FBB2751DB601DEB5D90740CEA221B2EE0CD9A2A0D16E0F3A13DB78A02B5'
+        )
+
+    def test_hash_CALG_GR3411_2012_512(self):
+        with open(os.path.join(files_dir, 'signatures', 'doc.txt'), 'rb') as f:
+            content = f.read()
+
+        self.assertEqual(
+            self.sdk.create_hash(content, 'CALG_GR3411_2012_512'),
+            '32C1304E914F0616063D7765EBA5C81F907AB8CD684C0787ED9445DD74B8CD95A5C286B249EE338CFAA3F446057B6107E151596BC0240474BC342160F2440089'
         )
 
     def test_get_cert_by_thumbprint(self):
