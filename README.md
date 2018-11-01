@@ -33,10 +33,10 @@ with open('doc.txt.sig', 'rb') as f:
 res = sdk.verify_detached(content, signature)
 
 
-# создание хэша файла по ГОСТу:
+# создание хэша файла алгоритмом ГОСТ Р 34.11-94:
 with open('doc.txt'), 'rb') as f:
     content = f.read()
-h = sdk.create_hash(content)
+h = sdk.create_hash(content, alg='CALG_GR3411')
 
 
 # поиск сертификата в хранилище MY по отпечатку:
