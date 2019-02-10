@@ -1,0 +1,6 @@
+установить корневой сертификат ГУЦ http://www.roskazna.ru/upload/iblock/448/8cae88bbfd404a7a53630864f9033606e1dc45e2.cer в root
+установить корневой сертификат Казначейства http://www.roskazna.ru/upload/iblock/d17/48b19fb33bb637c88a54d19650730b67e42db121.cer в ca
+выполнить /opt/cprocsp/sbin/amd64/cpconfig -ini '\config\Parameters' -add bool Rfc6125_NotStrict_ServerName_Check true   (https://www.cryptopro.ru/forum2/default.aspx?g=posts&t=5479)
+
+проверить: /opt/cprocsp/bin/amd64/csptestf -tlsc -server zakupki.gov.ru -v
+запросы: /opt/cprocsp/bin/amd64/curl https://zakupki.gov.ru
