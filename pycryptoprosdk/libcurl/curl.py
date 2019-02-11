@@ -200,7 +200,7 @@ class Curl:
 
         return Response(
             status_code=status_code.value,
-            text=b''.join(answers).decode('utf-8')
+            text=b''.join(answers)
         )
 
     def _cleanup(self):
