@@ -22,7 +22,7 @@ libpycades = Extension(
 
 setup(
     name='pycryptoprosdk',
-    version='0.0.4',
+    version='0.0.5',
     packages=['pycryptoprosdk'],
     ext_modules=[
         libpycades
