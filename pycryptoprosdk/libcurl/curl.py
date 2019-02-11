@@ -126,13 +126,11 @@ class Curl:
         res = curl.post(
             url='http://example.com/test/',
             data={
-                'login': '1024494001',
-                'password': 'd8Z7rHL8',
-                'refId': '4db0c3d7-96f3-4ca1-b4c3-88eaeeb52b13',
+                'foo': 'bar',
             },
             files={
-                'file': '/opt/project/tests/files/img.png',
-                'file1': ('test.txt', b'content'),
+                'file': '/path/to/file.txt',
+                'file1': ('file.txt', b'content'),
             }
         )
 
