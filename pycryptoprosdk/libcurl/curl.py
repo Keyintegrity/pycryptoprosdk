@@ -10,23 +10,21 @@ from pycryptoprosdk.libcurl.exceptions import (
 )
 
 
-cb = ctypes.CFUNCTYPE(
+write_function_wrap = ctypes.CFUNCTYPE(
     ctypes.c_size_t,
-    ctypes.c_void_p,
+    ctypes.c_char_p,
     ctypes.c_size_t,
     ctypes.c_size_t,
-    ctypes.c_void_p
+    ctypes.POINTER(ctypes.c_char_p)
 )
 
 
 lib = ctypes.CDLL(os.environ.get('LIBCURL') or '/opt/cprocsp/lib/amd64/libcpcurl.so')
 
-answers = []
-
 
 def write_function(cont, size, nmemb, userp):
     out = ctypes.string_at(cont, size * nmemb)
-    answers.append(out)
+    userp[0] = out
     return size * nmemb
 
 
@@ -105,16 +103,22 @@ class Curl:
         """
         from pycryptoprosdk.libcurl import Curl
 
+        curl = Curl()
         res = curl.get('http://example.com/test/')
 
         print(res.status_code)
         print(res.text)
+
+        curl.cleanup()
         """
         self._set_opt(const.CURLOPT_URL, url.encode('utf-8'))
-        self._set_opt(const.CURLOPT_WRITEFUNCTION, cb(write_function))
+
+        s = ctypes.c_char_p()
+        self._set_opt(const.CURLOPT_WRITEFUNCTION, write_function_wrap(write_function))
+        self._set_opt(const.CURLOPT_WRITEDATA, ctypes.byref(s))
+
         self._perform()
-        res = self._get_response()
-        self._cleanup()
+        res = self._get_response(s.value)
 
         return res
 
@@ -123,20 +127,23 @@ class Curl:
         from pycryptoprosdk.libcurl import Curl
 
         curl = Curl()
-
         res = curl.post(
             url='http://example.com/test/',
             data={
-                'foo': 'bar',
+                'login': '1024494001',
+                'password': 'd8Z7rHL8',
+                'refId': '4db0c3d7-96f3-4ca1-b4c3-88eaeeb52b13',
             },
             files={
-                'file': '/path/to/file.txt',
-                'file1': ('file.txt', b'content'),
+                'file': '/opt/project/tests/files/img.png',
+                'file1': ('test.txt', b'content'),
             }
         )
 
         print(res.status_code)
         print(res.text)
+
+        curl.cleanup()
         """
         form = None
 
@@ -149,14 +156,16 @@ class Curl:
             query_string = urlencode(data)
             self._set_opt(const.CURLOPT_POSTFIELDS, query_string.encode('utf-8'))
 
-        self._set_opt(const.CURLOPT_WRITEFUNCTION, cb(write_function))
+        s = ctypes.c_char_p()
+        self._set_opt(const.CURLOPT_WRITEFUNCTION, write_function_wrap(write_function))
+        self._set_opt(const.CURLOPT_WRITEDATA, ctypes.byref(s))
+
         self._perform()
 
         if form:
             form.free()
 
-        res = self._get_response()
-        self._cleanup()
+        res = self._get_response(s.value)
 
         return res
 
@@ -183,7 +192,6 @@ class Curl:
         return form
 
     def _perform(self):
-        answers = []
         perform_res = self._curl_easy_perform(self._curl)
         if perform_res != 0:
             if perform_res == 6:
@@ -194,7 +202,7 @@ class Curl:
 
             raise CurlException('Failed to perform request. Error {}'.format(perform_res))
 
-    def _get_response(self):
+    def _get_response(self, content):
         status_code = ctypes.c_long()
         getinfo_res = self._curl_easy_getinfo(self._curl, const.CURLINFO_RESPONSE_CODE, ctypes.byref(status_code))
         if getinfo_res != 0:
@@ -202,10 +210,8 @@ class Curl:
 
         return Response(
             status_code=status_code.value,
-            text=b''.join(answers)
+            text=content
         )
 
-    def _cleanup(self):
+    def cleanup(self):
         self._curl_easy_cleanup(self._curl)
-
-        return CurlException
