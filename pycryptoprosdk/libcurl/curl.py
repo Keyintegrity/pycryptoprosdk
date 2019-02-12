@@ -17,10 +17,11 @@ cb = ctypes.CFUNCTYPE(
     ctypes.c_size_t,
     ctypes.c_void_p
 )
-answers = []
 
 
 lib = ctypes.CDLL(os.environ.get('LIBCURL') or '/opt/cprocsp/lib/amd64/libcpcurl.so')
+
+answers = []
 
 
 def write_function(cont, size, nmemb, userp):
@@ -182,6 +183,7 @@ class Curl:
         return form
 
     def _perform(self):
+        answers = []
         perform_res = self._curl_easy_perform(self._curl)
         if perform_res != 0:
             if perform_res == 6:
