@@ -169,6 +169,9 @@ class Curl:
 
         return res
 
+    def cleanup(self):
+        self._curl_easy_cleanup(self._curl)
+
     def _set_opt(self, opt, value):
         setopt_res = self._curl_easy_setopt(self._curl, opt, value)
         if setopt_res != 0:
@@ -212,6 +215,3 @@ class Curl:
             status_code=status_code.value,
             text=content
         )
-
-    def cleanup(self):
-        self._curl_easy_cleanup(self._curl)
