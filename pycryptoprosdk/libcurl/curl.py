@@ -51,35 +51,43 @@ class CurlForm:
         )
 
     def add_file_field(self, field_name, file):
-        if type(file) is str:
-            self._curl_formadd(
-                ctypes.byref(self.post),
-                ctypes.byref(self.last),
-                const.CURLFORM_COPYNAME, field_name.encode('utf-8'),
-                const.CURLFORM_FILE, file.encode('utf-8'),
-                const.CURLFORM_END
-            )
-            return
+        types = [str, tuple]
+        if type(file) not in types:
+            raise ValueError("'file' variable must be '{}', not '{}'".format(types, type(file)))
 
-        if type(file) is tuple:
-            file_name, file_data = file
-            length = len(file_data)
-
-            self._curl_formadd(
-                ctypes.byref(self.post),
-                ctypes.byref(self.last),
-                const.CURLFORM_COPYNAME, field_name.encode('utf-8'),
-                const.CURLFORM_BUFFER, file_name.encode('utf-8'),
-                const.CURLFORM_BUFFERPTR, ctypes.c_char_p(file_data),
-                const.CURLFORM_BUFFERLENGTH, ctypes.c_long(length),
-                const.CURLFORM_END
-            )
-            return
-
-        raise ValueError("'file' variable must be 'str' or 'tuple', not '{}'".format(type(file)))
+        self._curl_formadd(*self._get_file_field_opts(field_name, file))
 
     def free(self):
         self._curl_formfree(self.post)
+
+    def _get_file_field_opts(self, field_name, file):
+        opts = [
+            ctypes.byref(self.post),
+            ctypes.byref(self.last),
+            const.CURLFORM_COPYNAME, field_name.encode('utf-8'),
+        ]
+        if type(file) is str:
+            opts.extend([const.CURLFORM_FILE, file.encode('utf-8')])
+
+        if type(file) is tuple:
+            file_name = file[0]
+            file_data = file[1]
+
+            length = len(file_data)
+
+            opts.extend([
+                const.CURLFORM_BUFFER, file_name.encode('utf-8'),
+                const.CURLFORM_BUFFERPTR, ctypes.c_char_p(file_data),
+                const.CURLFORM_BUFFERLENGTH, ctypes.c_long(length),
+            ])
+
+            if len(file) == 3:
+                content_type = file[2]
+                opts.extend([const.CURLFORM_CONTENTTYPE, content_type.encode('utf-8')])
+
+        opts.append(const.CURLFORM_END)
+
+        return opts
 
 
 class Curl:
