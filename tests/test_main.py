@@ -132,22 +132,23 @@ class TestCryptoProSDK(unittest.TestCase):
         )
         self.assertEqual(
             cert.subject.as_string(),
-            'CN=Иванов Иван Иванович, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET=Улица, L=Город (c4e34b84-95f0-4446-be13-f3ff6767d179)'
+            'CN=Иванов Иван Иванович, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", '
+            'L=Город'
         )
         subject_dict = cert.subject.as_dict()
         self.assertEqual(subject_dict['CN'], 'Иванов Иван Иванович')
         self.assertEqual(subject_dict['INN'], '123456789047')
         self.assertEqual(subject_dict['OGRN'], '1123300000053')
         self.assertEqual(subject_dict['SNILS'], '12345678901')
-        self.assertEqual(subject_dict['STREET'], 'Улица')
-        self.assertEqual(subject_dict['L'], 'Город (c4e34b84-95f0-4446-be13-f3ff6767d179)')
+        self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
+        self.assertEqual(subject_dict['L'], 'Город')
 
         self.assertEqual(cert.subject.personal_info, subject_dict)
         self.assertEqual(cert.subject.cn, 'Иванов Иван Иванович')
         self.assertEqual(cert.subject.inn, '123456789047')
         self.assertEqual(cert.subject.snils, '12345678901')
-        self.assertEqual(cert.subject.street, 'Улица')
-        self.assertEqual(cert.subject.city, 'Город (c4e34b84-95f0-4446-be13-f3ff6767d179)')
+        self.assertEqual(cert.subject.street, '"Улица, дом"')
+        self.assertEqual(cert.subject.city, 'Город')
 
     def test_inn_shortcut(self):
         signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
