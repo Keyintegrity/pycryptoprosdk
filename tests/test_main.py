@@ -2,9 +2,10 @@ import os
 import unittest
 from base64 import b64encode
 from datetime import datetime
-from pycryptoprosdk import CryptoProSDK
-from pycryptoprosdk.error_codes import CRYPT_E_INVALID_MSG_TYPE
 
+from pycryptoprosdk import CryptoProSDK
+from pycryptoprosdk import Subject
+from pycryptoprosdk.error_codes import CRYPT_E_INVALID_MSG_TYPE
 
 files_dir = os.path.join(os.path.dirname(__file__), 'files')
 
@@ -131,7 +132,8 @@ class TestCryptoProSDK(unittest.TestCase):
         )
         self.assertEqual(
             cert.subject.as_string(),
-            'CN=Иванов Иван Иванович, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
+            'CN=Иванов Иван Иванович, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", '
+            'L=Город'
         )
         subject_dict = cert.subject.as_dict()
         self.assertEqual(subject_dict['CN'], 'Иванов Иван Иванович')
@@ -140,6 +142,23 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertEqual(subject_dict['SNILS'], '12345678901')
         self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
         self.assertEqual(subject_dict['L'], 'Город')
+
+        self.assertEqual(cert.subject.personal_info, subject_dict)
+        self.assertEqual(cert.subject.cn, 'Иванов Иван Иванович')
+        self.assertEqual(cert.subject.inn, '123456789047')
+        self.assertEqual(cert.subject.snils, '12345678901')
+        self.assertEqual(cert.subject.street, '"Улица, дом"')
+        self.assertEqual(cert.subject.city, 'Город')
+
+    def test_inn_shortcut(self):
+        signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
+        cert = self.sdk.get_signer_cert_from_signature(signature_content)
+        subject_list = cert.subject.subject_string.split(', ')
+        subject_list[1] = 'INN=003456789047'
+        subject_string = ', '.join(subject_list)
+        subject = Subject(subject_string)
+        self.assertEqual(subject.inn, '003456789047')
+        self.assertEqual(subject.inn_shortcut, '3456789047')
 
 
 if __name__ == '__main__':
