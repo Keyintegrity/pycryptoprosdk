@@ -150,15 +150,15 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertEqual(cert.subject.street, '"Улица, дом"')
         self.assertEqual(cert.subject.city, 'Город')
 
-    def test_inn_shortcut(self):
+    def test_inn_original(self):
         signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
         cert = self.sdk.get_signer_cert_from_signature(signature_content)
         subject_list = cert.subject.subject_string.split(', ')
         subject_list[1] = 'INN=003456789047'
         subject_string = ', '.join(subject_list)
         subject = Subject(subject_string)
-        self.assertEqual(subject.inn, '003456789047')
-        self.assertEqual(subject.inn_shortcut, '3456789047')
+        self.assertEqual(subject.inn_original, '003456789047')
+        self.assertEqual(subject.inn, '3456789047')
 
 
 if __name__ == '__main__':

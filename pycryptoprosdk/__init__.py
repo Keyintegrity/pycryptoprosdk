@@ -28,9 +28,10 @@ class Subject(object):
         self.subject_string = subject_string
         self.personal_info = self.as_dict()
         self.cn = self.get_field('CN')
-        self.inn = self.get_field('INN')
-        if len(self.inn) == 12 and self.inn[:2] == '00':
-            self.inn_shortcut = self.inn[2:]
+        self.inn_original = self.get_field('INN')
+        self.inn = self.inn_original
+        if len(self.inn_original) == 12 and self.inn_original[:2] == '00':
+            self.inn = self.inn_original[2:]
         self.snils = self.get_field('SNILS')
         self.city = self.get_field('L')
         self.street = self.get_field('STREET')
