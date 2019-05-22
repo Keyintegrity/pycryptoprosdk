@@ -1,6 +1,7 @@
 import ctypes
 import os
 import re
+
 from distutils.sysconfig import get_config_var
 from pycryptoprosdk.utils import str_to_date
 
@@ -11,7 +12,8 @@ class _CertInfo(ctypes.Structure):
         ('issuer', ctypes.c_char * 1024),
         ('notValidBefore', ctypes.c_char * 19),
         ('notValidAfter', ctypes.c_char * 19),
-        ('thumbprint', ctypes.c_char * 41)
+        ('thumbprint', ctypes.c_char * 41),
+        ('altName', ctypes.c_char * 1024),
     ]
 
 
@@ -23,34 +25,9 @@ class _VerificationInfo(ctypes.Structure):
     ]
 
 
-class Subject(object):
-    def __init__(self, subject_string):
-        self.subject_string = subject_string
-        self.personal_info = self.as_dict()
-        self.cn = self.get_field('CN')
-        self.inn_original = self.get_field('INN')
-        self.inn = self.inn_original
-        if len(self.inn_original) == 12 and self.inn_original[:2] == '00':
-            self.inn = self.inn_original[2:]
-        self.snils = self.get_field('SNILS')
-        self.city = self.get_field('L')
-        self.street = self.get_field('STREET')
-
-    def get_field(self, name):
-        return self.personal_info.get(name, '')
-
-    def as_string(self):
-        return self.subject_string
-
-    def as_dict(self):
-        data = {}
-        for item in re.compile(',(?<!^)\s+(?=[A-Z])(?!.\s)').split(self.subject_string):
-            try:
-                k, v = item.split('=')
-                data[k] = v
-            except:
-                pass
-        return data
+class CertName:
+    def __init__(self, cert_name_string):
+        self.cert_name = cert_name_string
 
     def __repr__(self):
         return self.as_string()
@@ -58,17 +35,53 @@ class Subject(object):
     def __len__(self):
         return len(self.as_string())
 
+    def as_string(self):
+        return self.cert_name
 
-class CertInfo(object):
+    def as_dict(self):
+        data = {}
+        for item in re.compile(r',(?<!^)\s+(?=[A-Z])(?!.\s)').split(self.cert_name):
+            try:
+                k, v = item.split('=')
+                data[k] = v
+            except:
+                pass
+        return data
+
+
+class Subject(CertName):
+    def __init__(self, cert_name_string):
+        super(Subject, self).__init__(cert_name_string)
+
+        self.personal_info = self.as_dict()
+        self.cn = self._get_field('CN')
+        self.inn_original = self._get_field('INN')
+        self.inn = self.inn_original
+        if len(self.inn_original) == 12 and self.inn_original[:2] == '00':
+            self.inn = self.inn_original[2:]
+        self.snils = self._get_field('SNILS')
+        self.city = self._get_field('L')
+        self.street = self._get_field('STREET')
+
+    def _get_field(self, name):
+        return self.personal_info.get(name, '')
+
+
+class Issuer(Subject):
+    pass
+
+
+class CertInfo:
     def __init__(self, cert_info):
         self.subject = Subject(cert_info.subject.decode('utf-8'))
-        self.issuer = Subject(cert_info.issuer.decode('utf-8'))
+        self.issuer = Issuer(cert_info.issuer.decode('utf-8'))
         self.valid_from = str_to_date(cert_info.notValidBefore.decode('utf-8'))
         self.valid_to = str_to_date(cert_info.notValidAfter.decode('utf-8'))
         self.thumbprint = cert_info.thumbprint.decode('utf-8')
+        self.alt_name = CertName(cert_info.altName.decode('utf-8', errors='ignore'))
 
 
-class VerificationInfo(object):
+class VerificationInfo:
     def __init__(self, verification_info):
         self._verification_info = verification_info
 
@@ -82,7 +95,7 @@ class VerificationInfo(object):
         return CertInfo(self._verification_info.certInfo)
 
 
-class CryptoProSDK(object):
+class CryptoProSDK:
     def __init__(self):
         suffix = get_config_var('EXT_SUFFIX') or ''
 

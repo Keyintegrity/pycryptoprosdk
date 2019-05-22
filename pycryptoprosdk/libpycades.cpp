@@ -14,6 +14,7 @@ typedef struct {
     char notValidBefore[19];
     char notValidAfter[19];
     char thumbprint[41];
+    char altName[1024];
 } CERTIFICATE_INFO;
 
 typedef struct {
@@ -120,6 +121,63 @@ CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
     );
 
     CryptBinaryToString(hash, dataSize, CRYPT_STRING_HEX, certInfo.thumbprint, &hashStringSize);
+
+    PCERT_EXTENSION pExtension;
+
+    pExtension = CertFindExtension(
+        szOID_SUBJECT_ALT_NAME2,
+        pCertContext->pCertInfo->cExtension,
+        pCertContext->pCertInfo->rgExtension
+    );
+
+    if (pExtension){
+        LPVOID pvStructInfo;
+        CERT_ALT_NAME_INFO *pAltNameInfo;
+        DWORD cbStructInfo;
+        CERT_NAME_BLOB directoryName;
+
+        CryptDecodeObject(
+            X509_ASN_ENCODING,
+            szOID_SUBJECT_ALT_NAME2,
+            pExtension->Value.pbData,
+            pExtension->Value.cbData,
+            0,
+            0,
+            &cbStructInfo
+        );
+
+        pvStructInfo = LocalAlloc(LMEM_FIXED, cbStructInfo);
+
+        CryptDecodeObject(
+            X509_ASN_ENCODING,
+            szOID_SUBJECT_ALT_NAME2,
+            pExtension->Value.pbData,
+            pExtension->Value.cbData,
+            0,
+            pvStructInfo,
+            &cbStructInfo
+        );
+
+        pAltNameInfo = (CERT_ALT_NAME_INFO *)pvStructInfo;
+
+        for (DWORD i = 0;  i < pAltNameInfo->cAltEntry; i++) {
+            const CERT_ALT_NAME_ENTRY& entry = pAltNameInfo->rgAltEntry[i];
+
+            if (entry.dwAltNameChoice == CERT_ALT_NAME_DIRECTORY_NAME) {
+                directoryName = entry._empty_union_.DirectoryName;
+                CertNameToStr(
+                    X509_ASN_ENCODING,
+                    &directoryName,
+                    CERT_X500_NAME_STR,
+                    certInfo.altName,
+                    1024
+                );
+                break;
+            }
+        }
+
+        LocalFree(pvStructInfo);
+    }
 
     return certInfo;
 }
