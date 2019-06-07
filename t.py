@@ -1,9 +1,11 @@
 import os
 from base64 import b64encode
-from pycryptoprosdk import libpycades
+from pycryptoprosdk import libpycades, CryptoProSDK
 
 
 files_dir = os.path.join(os.path.dirname(__file__), 'tests', 'files')
+
+sdk = CryptoProSDK()
 
 
 # with open(os.path.join(files_dir, 'signatures', 'doc.txt'), 'rb') as f:
@@ -33,5 +35,5 @@ with open(os.path.join('tests', 'files', 'signatures', 'doc.txt'), 'rb') as f:
 with open(os.path.join('tests', 'files', 'signatures', 'doc.txt.sgn')) as f:
     signature = f.read()
 
-res = libpycades.verify_detached(content.decode('utf-8'), signature)
-print(res)
+res = sdk.verify_detached(content, signature)
+print(res.cert.as_dict())
