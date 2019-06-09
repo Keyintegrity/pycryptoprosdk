@@ -206,9 +206,10 @@ PyObject * GetCertInfo(PCCERT_CONTEXT pCertContext){
 static PyObject * CreateHash(PyObject *self, PyObject *args)
 {
     const char *message;
+    unsigned int length;
     const char *algString;
 
-    if (!PyArg_ParseTuple(args, "s*s", &message, &algString))
+    if (!PyArg_ParseTuple(args, "s*ls", &message, &length, &algString))
         return NULL;
 
     HCRYPTPROV hProv;
@@ -240,7 +241,7 @@ static PyObject * CreateHash(PyObject *self, PyObject *args)
 
     BYTE *pbData = (BYTE*)message;
 
-    if (!CryptHashData(hHash, pbData, strlen(message), 0)){
+    if (!CryptHashData(hHash, pbData, length, 0)){
         CryptReleaseContext(hProv, 0);
         CryptDestroyHash(hHash);
 
@@ -631,10 +632,9 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
         return NULL;
 
     PyObject * res = PyDict_New();
-    PyObject * error = Py_None;
 
     PyDict_SetItemString(res, "verificationStatus", PyLong_FromLong(-1));
-    PyDict_SetItemString(res, "error", error);
+    PyDict_SetItemString(res, "error", Py_None);
 
     //декодируем контент файла
     DWORD nDestinationFileSize = 0;
@@ -729,11 +729,10 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
         MessageSizeArray,
         &pVerifyInfo
     )) {
-        error = PyUnicode_FromFormat("0x%x", GetLastError());
+        PyDict_SetItemString(res, "error", PyUnicode_FromFormat("0x%x", GetLastError()));
     }
 
     if (pVerifyInfo) {
-        PyDict_SetItemString(res, "error", error);
         PyDict_SetItemString(res, "verificationStatus", PyLong_FromLong(pVerifyInfo->dwStatus));
         PyDict_SetItemString(res, "certInfo", GetCertInfo(pVerifyInfo->pSignerCert));
 
