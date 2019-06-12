@@ -4,7 +4,6 @@ from distutils.core import setup, Extension
 libpycades = Extension(
     name='pycryptoprosdk.libpycades',
     sources=[
-        # 'pycryptoprosdk/helpers.cpp',
         'pycryptoprosdk/libpycades.cpp',
     ],
     include_dirs=[
@@ -31,9 +30,9 @@ libpycades = Extension(
 
 setup(
     name='pycryptoprosdk',
-    version='0.1.0',
+    version='1.0.0',
     packages=[
-        # 'pycryptoprosdk',
+        'pycryptoprosdk',
         'pycryptoprosdk.libcurl',
     ],
     ext_modules=[

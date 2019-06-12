@@ -15,25 +15,26 @@ class TestCryptoProSDK(unittest.TestCase):
     def setUp(self):
         self.sdk = CryptoProSDK()
 
-    def _get_content(self, file_name):
-        with open(file_name, 'rb') as f:
+    def _get_content(self, file_name, mode='rb'):
+        with open(file_name, mode) as f:
             return f.read()
 
-    def _get_content_b64(self, filename):
-        return b64encode(self._get_content(filename))
+    def _get_content_b64(self, filename, mode='rb'):
+        return b64encode(self._get_content(filename, mode))
 
     def test_verify_detached(self):
         content = self._get_content_b64(os.path.join(files_dir, 'signatures', 'doc.txt'))
-        signature = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
+        signature = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'), mode='r')
 
         res = self.sdk.verify_detached(content, signature)
+
         self.assertEqual(0, res.verification_status)
         self.assertIsNotNone(res.cert)
 
     def test_bad_signature(self):
         content = self._get_content_b64(os.path.join(files_dir, 'signatures', 'doc.txt'))
 
-        res = self.sdk.verify_detached(content, b'signature')
+        res = self.sdk.verify_detached(content, 'signature')
 
         self.assertEqual(res.verification_status, -1)
         self.assertIsNone(res.cert)
@@ -164,6 +165,22 @@ class TestCryptoProSDK(unittest.TestCase):
         subject = Subject(subject_string)
         self.assertEqual(subject.inn_original, '003456789047')
         self.assertEqual(subject.inn, '3456789047')
+
+    def test_sign(self):
+        content = self._get_content_b64(os.path.join(files_dir, 'img.png'))
+        cert = self.sdk.get_cert_by_subject('MY', 'Ivan')
+        signature = self.sdk.sign(content, cert.thumbprint, 'MY', detached=False)
+        self.assertTrue(len(signature) > 0)
+
+    def test_sign_detached(self):
+        content = b64encode(b'test content')
+        cert = self.sdk.get_cert_by_subject('MY', 'Ivan')
+        signature = self.sdk.sign(content, cert.thumbprint, 'MY', detached=True)
+
+        res = self.sdk.verify_detached(content, signature)
+
+        self.assertEqual(0, res.verification_status)
+        self.assertIsNotNone(res.cert)
 
     # def test_get_signer_alt_name_from_signature(self):
     #     signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'test.txt.sig'))

@@ -17,20 +17,37 @@ python setup.py install
 
 ## Примеры использования
 ```python
+from base64 import b64encode
 from pycryptoprosdk import CryptoProSDK
 
 
 sdk = CryptoProSDK()
 
 
-# верификация отсоединенной подписи:
-with open('doc.txt', 'rb') as f:
-    content = b64encode(f.read())
+# Создание и проверка отсоединенной подписи:
+content = b64encode(b'test content')
+cert = sdk.get_cert_by_subject('MY', 'Ivan')
+signature = sdk.sign(content, cert.thumbprint, 'MY', detached=True)
 
-with open('doc.txt.sig', 'rb') as f:
-    signature = b64encode(f.read())
+result = sdk.verify_detached(content, signature)
 
-res = sdk.verify_detached(content, signature)
+# статус проверки:
+result.verification_status
+
+0: Успешная проверка подписи.
+1: Отсутствуют или имеют неправильный формат атрибуты со ссылками и значениями доказательств подлинности.
+2: Сертификат, на ключе которого было подписано сообщение, не найден.
+3: В сообщении не найден действительный штамп времени на подпись.
+4: Значения ссылок на доказательства подлинности и сами доказательства, вложенные в сообщение, не соответствуют друг другу.
+5: Не удалось построить цепочку для сертификата, на ключе которого подписано сообщение.
+6: Ошибка проверки конечного сертификата на отзыв.
+7: Ошибка проверки сертификата цепочки на отзыв.
+8: Сообщение содержит неверную подпись.
+9: В сообщении не найден действительный штамп времени на доказательства подлинности подписи.
+10: Значение подписанного атрибута content-type не совпадает со значением, указанным в поле encapContentInfo.eContentType.
+
+# сертификат подписанта:
+result.cert.as_dict()
 
 
 # создание хэша файла алгоритмом ГОСТ Р 34.11-94:
@@ -61,10 +78,4 @@ sdk.delete_certificate('MY', '9e78a331020e528c046ffd57704a21b7d2241cb3')
 with open('signature.sig', 'rb') as f:
     signature_content = f.read()
 cert = sdk.get_signer_cert_from_signature(signature_content)
-```
-
-Сборка образа и запуск тестов:
-
-```
-docker-compose up --build --force-recreate
 ```

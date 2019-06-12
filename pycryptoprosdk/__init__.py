@@ -4,14 +4,25 @@ from pycryptoprosdk import libpycades
 
 
 class CryptoProSDK:
-    def verify_detached(self, file_content, signature_content):
+    def sign(self, content, thumbprint, store='MY', detached=False):
+        """
+        Создает подпись
+        :param content: подписываемая строка
+        :param thumbprint: отпечаток сертификата, которым производится подписание
+        :param store: хранилище сертификата, которым производится подписание
+        :param detached: создавать отсоединенную подпись
+        :return:
+        """
+        return libpycades.sign(content.decode('utf-8'), thumbprint, store, detached)
+
+    def verify_detached(self, file_content, signature):
         """
         Верифицирует отсоединенную подпись
         :param file_content: контент файла, закодированный в base64
-        :param signature_content: контент подписи, закодированный в base64
+        :param signature: контент подписи, закодированный в base64
         :return: структура VerificationInfo
         """
-        res = libpycades.verify_detached(file_content.decode('utf-8'), signature_content.decode('utf-8'))
+        res = libpycades.verify_detached(file_content.decode('utf-8'), signature)
         return VerificationInfo(res)
 
     def create_hash(self, content, alg):
