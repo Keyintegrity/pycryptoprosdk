@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from datetime import datetime
 
 from pycryptoprosdk import CryptoProSDK
@@ -21,6 +21,15 @@ class TestCryptoProSDK(unittest.TestCase):
 
     def _get_content_b64(self, filename, mode='rb'):
         return b64encode(self._get_content(filename, mode))
+
+    def test_sign_and_verify(self):
+        cert = self.sdk.get_cert_by_subject('MY', 'Ivan')
+        message = 'qwerty'
+        signature = self.sdk.sign(message, cert.thumbprint, 'MY', detached=False)
+        res = self.sdk.verify(signature)
+        self.assertEqual(res.verification_status, 0)
+        self.assertIsNotNone(res.cert)
+        self.assertEqual(res.message, message.encode('utf-8'))
 
     def test_verify_detached(self):
         content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt'))

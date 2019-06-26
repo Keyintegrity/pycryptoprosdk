@@ -17,18 +17,28 @@ class CryptoProSDK:
         message = self._prepare_message(message)
         return libpycades.sign(message, len(message), thumbprint, store, detached)
 
+    def verify(self, signature):
+        """
+        Верифицирует присоединенную подпись.
+        :param signature: контент подписи, закодированный в base64
+        :return: VerificationInfo
+        """
+        signature = b64decode(signature)
+        res = libpycades.verify(signature, len(signature))
+        return VerificationInfo(res)
+
     def verify_detached(self, message, signature):
         """
         Верифицирует отсоединенную подпись.
 
         :param message: сообщение, для которого проверяется подпись
         :param signature: контент подписи, закодированный в base64
-        :return: объект VerificationInfo
+        :return: объект VerificationInfoDetached
         """
         message = self._prepare_message(message)
         signature = b64decode(signature)
         res = libpycades.verify_detached(message, len(message), signature, len(signature))
-        return VerificationInfo(res)
+        return VerificationInfoDetached(res)
 
     def create_hash(self, message, alg):
         """
@@ -165,13 +175,25 @@ class CertInfo:
         return self.cert_info
 
 
-class VerificationInfo:
+class VerificationInfoDetached:
     def __init__(self, verification_info):
         self._verification_info = verification_info
 
         self.verification_status = self._verification_info['verificationStatus']
         self.cert = self._get_cert()
         self.error = self._verification_info['error']
+
+    def _get_cert(self):
+        if self.verification_status == -1:
+            return
+        return CertInfo(self._verification_info['certInfo'])
+
+
+class VerificationInfo(VerificationInfoDetached):
+    def __init__(self, verification_info):
+        super(VerificationInfo, self).__init__(verification_info)
+        message = self._verification_info['message']
+        self.message = b64decode(message) if message else None
 
     def _get_cert(self):
         if self.verification_status == -1:

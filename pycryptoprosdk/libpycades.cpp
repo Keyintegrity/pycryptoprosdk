@@ -635,6 +635,86 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject * Verify(PyObject *self, PyObject *args)
+{
+    const char *signature;
+    int signatureLength;
+
+    if (!PyArg_ParseTuple(args, "y*i", &signature, &signatureLength))
+        return NULL;
+
+    PyObject * res = PyDict_New();
+
+    PyDict_SetItemString(res, "verificationStatus", PyLong_FromLong(-1));
+    PyDict_SetItemString(res, "message", Py_None);
+    PyDict_SetItemString(res, "error", Py_None);
+
+
+    CRYPT_VERIFY_MESSAGE_PARA cryptVerifyPara = { sizeof(cryptVerifyPara) };
+    cryptVerifyPara.dwMsgAndCertEncodingType = MY_ENCODING_TYPE;
+
+    CADES_VERIFICATION_PARA cadesVerifyPara = { sizeof(cadesVerifyPara) };
+    cadesVerifyPara.dwCadesType = CADES_BES;
+
+    CADES_VERIFY_MESSAGE_PARA verifyPara = { sizeof(verifyPara) };
+
+    verifyPara.pVerifyMessagePara = &cryptVerifyPara;
+    verifyPara.pCadesVerifyPara = &cadesVerifyPara;
+
+    BYTE *pbSignature = (BYTE*)signature;
+
+    PCADES_VERIFICATION_INFO pVerifyInfo;
+    PCRYPT_DATA_BLOB pContent = 0;
+
+    if (!CadesVerifyMessage(
+        &verifyPara,
+        0,
+        pbSignature,
+        signatureLength,
+        &pContent,
+        &pVerifyInfo
+    )) {
+        PyDict_SetItemString(res, "error", PyUnicode_FromFormat("0x%x", GetLastError()));
+    }
+
+    if (pVerifyInfo) {
+        PyDict_SetItemString(res, "verificationStatus", PyLong_FromLong(pVerifyInfo->dwStatus));
+        PyDict_SetItemString(res, "certInfo", GetCertInfo(pVerifyInfo->pSignerCert));
+
+        CadesFreeVerificationInfo(pVerifyInfo);
+    }
+
+    DWORD contentLength = 0;
+
+    if(!CryptBinaryToString(
+        pContent->pbData,
+        pContent->cbData,
+        CRYPT_STRING_BASE64,
+        NULL,
+        &contentLength))
+    {
+        PyErr_Format(PyExc_ValueError, "CryptBinaryToString #1 failed (error 0x%x).", GetLastError());
+        return NULL;
+    }
+
+    char base64Content[contentLength+1];
+
+    if(!CryptBinaryToString(
+        pContent->pbData,
+        pContent->cbData,
+        CRYPT_STRING_BASE64,
+        base64Content,
+        &contentLength
+    )) {
+        PyErr_Format(PyExc_ValueError, "CryptBinaryToString #2 failed (error 0x%x).", GetLastError());
+        return NULL;
+    }
+
+    PyDict_SetItemString(res, "message", PyUnicode_FromString(base64Content));
+
+    return res;
+}
+
 static PyObject * VerifyDetached(PyObject *self, PyObject *args)
 {
     const char *message;
@@ -818,6 +898,7 @@ static PyMethodDef Methods[] = {
     {"get_signer_cert_from_signature",  GetSignerCertFromSignature, METH_VARARGS},
     {"install_certificate",  InstallCertificate, METH_VARARGS},
     {"delete_certificate",  DeleteCertificate, METH_VARARGS},
+    {"verify",  Verify, METH_VARARGS},
     {"verify_detached",  VerifyDetached, METH_VARARGS},
     {"sign",  Sign, METH_VARARGS},
     {NULL, NULL, 0, NULL}
