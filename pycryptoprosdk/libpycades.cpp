@@ -221,7 +221,7 @@ static PyObject * CreateHash(PyObject *self, PyObject *args)
     unsigned int length;
     const char *algString;
 
-    if (!PyArg_ParseTuple(args, "s*ls", &message, &length, &algString))
+    if (!PyArg_ParseTuple(args, "y*ls", &message, &length, &algString))
         return NULL;
 
     HCRYPTPROV hProv;
@@ -637,10 +637,12 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args)
 
 static PyObject * VerifyDetached(PyObject *self, PyObject *args)
 {
-    const char *base64FileContent;
-    const char *base64SignContent;
+    const char *message;
+    int messageLength;
+    const char *signature;
+    int signatureLength;
 
-    if (!PyArg_ParseTuple(args, "ss", &base64FileContent, &base64SignContent))
+    if (!PyArg_ParseTuple(args, "y*iy*i", &message, &messageLength, &signature, &signatureLength))
         return NULL;
 
     PyObject * res = PyDict_New();
@@ -648,75 +650,13 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
     PyDict_SetItemString(res, "verificationStatus", PyLong_FromLong(-1));
     PyDict_SetItemString(res, "error", Py_None);
 
-    //декодируем контент файла
-    DWORD nDestinationFileSize = 0;
-    if (!CryptStringToBinary(
-        base64FileContent,
-        strlen(base64FileContent),
-        CRYPT_STRING_BASE64,
-        NULL,
-        &nDestinationFileSize,
-        0,
-        0
-    )){
-        PyErr_Format(PyExc_Exception, "CryptStringToBinary #1 failed (Error: 0x%x).", GetLastError());
-        return NULL;
-    }
-
-    BYTE* pDecodedFileContent;
-    pDecodedFileContent = (BYTE *) malloc(nDestinationFileSize);
-
-    if(!CryptStringToBinary(
-        base64FileContent,
-        strlen(base64FileContent),
-        CRYPT_STRING_BASE64,
-        pDecodedFileContent,
-        &nDestinationFileSize,
-        0,
-        0
-    )){
-        PyErr_Format(PyExc_Exception, "CryptStringToBinary #2 failed (Error: 0x%x).", GetLastError());
-        return NULL;
-    };
-
-    //декодируем контент подписи
-    DWORD nDestinationSignSize = 0;
-    if (!CryptStringToBinary(
-        base64SignContent,
-        strlen(base64SignContent),
-        CRYPT_STRING_BASE64,
-        NULL,
-        &nDestinationSignSize,
-        0,
-        0
-    )){
-        PyErr_Format(PyExc_Exception, "CryptStringToBinary #3 failed (Error: 0x%x).", GetLastError());
-        return NULL;
-    }
-
-    BYTE* pDecodedSignContent;
-    pDecodedSignContent = (BYTE *) malloc(nDestinationSignSize);
-
-    if(!CryptStringToBinary(
-        base64SignContent,
-        strlen(base64SignContent),
-        CRYPT_STRING_BASE64,
-        pDecodedSignContent,
-        &nDestinationSignSize,
-        0,
-        0
-    )){
-        PyErr_Format(PyExc_Exception, "CryptStringToBinary #4 failed (Error: 0x%x).", GetLastError());
-        return NULL;
-    };
-
     const BYTE *MessageArray[1];
     DWORD MessageSizeArray[1];
 
-    BYTE *pbToBeSigned = (BYTE*)pDecodedFileContent;
+    BYTE *pbToBeSigned = (BYTE*)message;
 
     MessageArray[0] = pbToBeSigned;
-    MessageSizeArray[0] = nDestinationFileSize;
+    MessageSizeArray[0] = messageLength;
 
     CRYPT_VERIFY_MESSAGE_PARA cryptVerifyPara = { sizeof(cryptVerifyPara) };
     cryptVerifyPara.dwMsgAndCertEncodingType = MY_ENCODING_TYPE;
@@ -731,11 +671,13 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
 
     PCADES_VERIFICATION_INFO pVerifyInfo;
 
+    BYTE *pbSignature = (BYTE*)signature;
+
     if (!CadesVerifyDetachedMessage(
         &verifyPara,
         0,
-        pDecodedSignContent,
-        nDestinationSignSize,
+        pbSignature,
+        signatureLength,
         1,
         MessageArray,
         MessageSizeArray,
@@ -751,23 +693,18 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
         CadesFreeVerificationInfo(pVerifyInfo);
     }
 
-    if (pDecodedFileContent)
-        free(pDecodedFileContent);
-
-    if(pDecodedSignContent)
-        free(pDecodedSignContent);
-
     return res;
 }
 
 static PyObject * Sign(PyObject *self, PyObject *args)
 {
-    const char *base64FileContent;
+    const char *message;
+    int length = 1;
     const char *thumbprint;
     const char *storeName;
-    bool detached;
+    int detached = 0;
 
-    if (!PyArg_ParseTuple(args, "sssl", &base64FileContent, &thumbprint, &storeName, &detached))
+    if (!PyArg_ParseTuple(args, "y*issi", &message, &length, &thumbprint, &storeName, &detached))
         return NULL;
 
     HCERTSTORE hStoreHandle;
@@ -815,46 +752,15 @@ static PyObject * Sign(PyObject *self, PyObject *args)
     messagePara.pSignMessagePara = &signPara;
     messagePara.pCadesSignPara = &cadesSignPara;
 
-    //декодируем контент файла
-    DWORD nDestinationFileSize = 0;
-    if (!CryptStringToBinary(
-        base64FileContent,
-        strlen(base64FileContent),
-        CRYPT_STRING_BASE64,
-        NULL,
-        &nDestinationFileSize,
-        0,
-        0
-    )){
-        PyErr_Format(PyExc_ValueError, "CryptStringToBinary #2 failed (error 0x%x).", GetLastError());
-        return NULL;
-    }
-
-    BYTE *pDecodedFileContent;
-    pDecodedFileContent = (BYTE *) malloc(nDestinationFileSize);
-
-    if(!CryptStringToBinary(
-        base64FileContent,
-        strlen(base64FileContent),
-        CRYPT_STRING_BASE64,
-        pDecodedFileContent,
-        &nDestinationFileSize,
-        0,
-        0
-    )){
-        PyErr_Format(PyExc_ValueError, "CryptStringToBinary #3 failed (error 0x%x).", GetLastError());
-        return NULL;
-    };
-
     PCRYPT_DATA_BLOB pSignedMessage = 0;
 
     const BYTE *MessageArray[1];
     DWORD MessageSizeArray[1];
 
-    BYTE *pbToBeSigned = (BYTE*)pDecodedFileContent;
+    BYTE *pbToBeSigned = (BYTE*)message;
 
     MessageArray[0] = pbToBeSigned;
-    MessageSizeArray[0] = nDestinationFileSize;
+    MessageSizeArray[0] = length;
 
     if(!CadesSignMessage(
         &messagePara,

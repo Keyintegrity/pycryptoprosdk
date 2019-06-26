@@ -34,7 +34,7 @@ class TestCryptoProSDK(unittest.TestCase):
     def test_bad_signature(self):
         content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt'))
 
-        res = self.sdk.verify_detached(content, 'signature')
+        res = self.sdk.verify_detached(content, b64encode(b'signature'))
 
         self.assertEqual(res.verification_status, -1)
         self.assertIsNone(res.cert)

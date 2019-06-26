@@ -1,5 +1,5 @@
 import re
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from pycryptoprosdk import libpycades
 
 
@@ -14,7 +14,8 @@ class CryptoProSDK:
         :param detached: создавать отсоединенную подпись
         :return: подпись в base64
         """
-        return libpycades.sign(self._prepare_message(message), thumbprint, store, detached)
+        message = self._prepare_message(message)
+        return libpycades.sign(message, len(message), thumbprint, store, detached)
 
     def verify_detached(self, message, signature):
         """
@@ -24,7 +25,9 @@ class CryptoProSDK:
         :param signature: контент подписи, закодированный в base64
         :return: объект VerificationInfo
         """
-        res = libpycades.verify_detached(self._prepare_message(message), signature)
+        message = self._prepare_message(message)
+        signature = b64decode(signature)
+        res = libpycades.verify_detached(message, len(message), signature, len(signature))
         return VerificationInfo(res)
 
     def create_hash(self, message, alg):
@@ -97,7 +100,7 @@ class CryptoProSDK:
     def _prepare_message(self, message):
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return b64encode(message).decode('utf-8')
+        return message
 
 
 class CertName:
