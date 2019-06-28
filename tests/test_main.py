@@ -33,7 +33,7 @@ class TestCryptoProSDK(unittest.TestCase):
 
     def test_verify_detached(self):
         content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt'))
-        signature = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'), mode='r')
+        signature = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
 
         res = self.sdk.verify_detached(content, signature)
 

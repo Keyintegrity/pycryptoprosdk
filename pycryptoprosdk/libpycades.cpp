@@ -218,10 +218,10 @@ PyObject * GetCertInfo(PCCERT_CONTEXT pCertContext){
 static PyObject * CreateHash(PyObject *self, PyObject *args)
 {
     const char *message;
-    unsigned int length;
+    Py_ssize_t length;
     const char *algString;
 
-    if (!PyArg_ParseTuple(args, "y*ls", &message, &length, &algString))
+    if (!PyArg_ParseTuple(args, "y#s", &message, &length, &algString))
         return NULL;
 
     HCRYPTPROV hProv;
@@ -389,39 +389,13 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args)
 
 static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args)
 {
-    const char *base64SignContent;
+    const char *signature;
+    Py_ssize_t signatureLength;
 
-    if (!PyArg_ParseTuple(args, "s", &base64SignContent))
+    if (!PyArg_ParseTuple(args, "y#", &signature, &signatureLength))
         return NULL;
 
-    DWORD nDestinationSignSize = 0;
-
-    if (!CryptStringToBinary(
-        base64SignContent,
-        strlen(base64SignContent),
-        CRYPT_STRING_BASE64,
-        NULL,
-        &nDestinationSignSize,
-        0,
-        0
-    )){
-        PyErr_SetString(PyExc_Exception, "CryptStringToBinary_first failed.");
-        return NULL;
-    }
-
-    BYTE pDecodedSignContent[nDestinationSignSize];
-    if(!CryptStringToBinary(
-        base64SignContent,
-        strlen(base64SignContent),
-        CRYPT_STRING_BASE64,
-        pDecodedSignContent,
-        &nDestinationSignSize,
-        0,
-        0
-    )){
-        PyErr_SetString(PyExc_Exception, "CryptStringToBinary_last failed.");
-        return NULL;
-    };
+    BYTE *pDecodedSignContent = (BYTE*)signature;
 
     HCRYPTMSG hMsg;
 
@@ -435,7 +409,7 @@ static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args)
     if(!(CryptMsgUpdate(
         hMsg,
         pDecodedSignContent,
-        nDestinationSignSize,
+        signatureLength,
         FALSE)))
     {
         PyErr_SetString(PyExc_Exception, "CryptMsgUpdate failed.");
@@ -458,7 +432,7 @@ static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args)
     PCERT_INFO pSignerCertInfo;
     if (!(pSignerCertInfo = (PCERT_INFO) malloc(cbSignerCertInfo)))
     {
-        PyErr_SetString(PyExc_Exception, "Verify memory allocation failed.");
+        PyErr_SetString(PyExc_Exception, "Memory allocation failed.");
         return NULL;
     }
 
@@ -638,9 +612,9 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args)
 static PyObject * Verify(PyObject *self, PyObject *args)
 {
     const char *signature;
-    int signatureLength;
+    Py_ssize_t signatureLength;
 
-    if (!PyArg_ParseTuple(args, "y*i", &signature, &signatureLength))
+    if (!PyArg_ParseTuple(args, "y#", &signature, &signatureLength))
         return NULL;
 
     PyObject * res = PyDict_New();
@@ -718,11 +692,11 @@ static PyObject * Verify(PyObject *self, PyObject *args)
 static PyObject * VerifyDetached(PyObject *self, PyObject *args)
 {
     const char *message;
-    int messageLength;
+    Py_ssize_t messageLength;
     const char *signature;
-    int signatureLength;
+    Py_ssize_t signatureLength;
 
-    if (!PyArg_ParseTuple(args, "y*iy*i", &message, &messageLength, &signature, &signatureLength))
+    if (!PyArg_ParseTuple(args, "y#y#", &message, &messageLength, &signature, &signatureLength))
         return NULL;
 
     PyObject * res = PyDict_New();
@@ -779,12 +753,12 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
 static PyObject * Sign(PyObject *self, PyObject *args)
 {
     const char *message;
-    int length = 1;
+    Py_ssize_t length;
     const char *thumbprint;
     const char *storeName;
-    int detached = 0;
+    int detached;
 
-    if (!PyArg_ParseTuple(args, "y*issi", &message, &length, &thumbprint, &storeName, &detached))
+    if (!PyArg_ParseTuple(args, "y#ssi", &message, &length, &thumbprint, &storeName, &detached))
         return NULL;
 
     HCERTSTORE hStoreHandle;
@@ -892,15 +866,15 @@ static PyObject * Sign(PyObject *self, PyObject *args)
 
 
 static PyMethodDef Methods[] = {
-    {"create_hash",  CreateHash, METH_VARARGS},
-    {"get_cert_by_subject",  GetCertBySubject, METH_VARARGS},
-    {"get_cert_by_thumbprint",  GetCertByThumbprint, METH_VARARGS},
-    {"get_signer_cert_from_signature",  GetSignerCertFromSignature, METH_VARARGS},
-    {"install_certificate",  InstallCertificate, METH_VARARGS},
-    {"delete_certificate",  DeleteCertificate, METH_VARARGS},
-    {"verify",  Verify, METH_VARARGS},
-    {"verify_detached",  VerifyDetached, METH_VARARGS},
-    {"sign",  Sign, METH_VARARGS},
+    {"create_hash", CreateHash, METH_VARARGS},
+    {"get_cert_by_subject", GetCertBySubject, METH_VARARGS},
+    {"get_cert_by_thumbprint", GetCertByThumbprint, METH_VARARGS},
+    {"get_signer_cert_from_signature", GetSignerCertFromSignature, METH_VARARGS},
+    {"install_certificate", InstallCertificate, METH_VARARGS},
+    {"delete_certificate", DeleteCertificate, METH_VARARGS},
+    {"verify", Verify, METH_VARARGS},
+    {"verify_detached", VerifyDetached, METH_VARARGS},
+    {"sign", Sign, METH_VARARGS},
     {NULL, NULL, 0, NULL}
 };
 
