@@ -17,7 +17,6 @@ python setup.py install
 
 ## Примеры использования
 ```python
-from base64 import b64encode
 from pycryptoprosdk import CryptoProSDK
 
 
@@ -25,10 +24,12 @@ sdk = CryptoProSDK()
 
 
 # Создание и проверка отсоединенной подписи:
-content = b64encode(b'test content')
-cert = sdk.get_cert_by_subject('MY', 'Ivan')
-signature = sdk.sign(content, cert.thumbprint, 'MY', detached=True)
 
+content = 'test content'
+
+cert = sdk.get_cert_by_subject('MY', 'Ivan')
+
+signature = sdk.sign(content, cert.thumbprint, 'MY', detached=True)
 result = sdk.verify_detached(content, signature)
 
 # статус проверки:
@@ -51,9 +52,7 @@ result.cert.as_dict()
 
 
 # создание хэша файла алгоритмом ГОСТ Р 34.11-94:
-with open('doc.txt'), 'rb') as f:
-    content = f.read()
-h = sdk.create_hash(content, alg='CALG_GR3411')
+h = sdk.create_hash('some text', alg='CALG_GR3411')
 
 
 # поиск сертификата в хранилище MY по отпечатку:
@@ -67,7 +66,7 @@ cert = sdk.get_cert_by_subject('MY', 'CRYPTO-PRO Test Center 2')
 # установка сертификата в хранилище MY:
 with open('certificate.cer'), 'rb') as f:
     cert_content = f.read()
-sdk.install_certificate('MY', b64encode(cert_content))
+sdk.install_certificate('MY', cert_content)
 
 
 # удаление сертификата из хранилища MY по отпечатку:
