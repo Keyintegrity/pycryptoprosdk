@@ -22,7 +22,7 @@ class CryptoProSDK:
         :param signature: контент подписи, закодированный в base64
         :return: VerificationInfo
         """
-        signature = b64decode(signature)
+        signature = self._prepare_message(signature, decode_b64=True)
         res = libpycades.verify(signature)
         return VerificationInfo(res)
 
@@ -54,7 +54,7 @@ class CryptoProSDK:
         if alg not in available_alg:
             raise ValueError('Unexpected algorithm \'{}\''.format(alg))
 
-        return libpycades.create_hash(message, alg)
+        return libpycades.create_hash(self._prepare_message(message), alg)
 
     def get_cert_by_subject(self, store, subject):
         """Возвращает сертификат по subject.
