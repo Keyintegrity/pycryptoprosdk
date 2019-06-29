@@ -12,26 +12,22 @@
 
 // start helpers -------------------------------------------------------------------------------------------------------
 
-ALG_ID GetAlgId(const char *algString)
-{
+ALG_ID GetAlgId(const char *algString) {
     std::string str(algString);
 
-    if ("CALG_GR3411" == str) {
+    if ("CALG_GR3411" == str)
         return CALG_GR3411;
-    }
 
-    if ("CALG_GR3411_2012_256" == str) {
+    if ("CALG_GR3411_2012_256" == str)
         return CALG_GR3411_2012_256;
-    }
 
-    if ("CALG_GR3411_2012_512" == str) {
+    if ("CALG_GR3411_2012_512" == str)
         return CALG_GR3411_2012_512;
-    }
 
     return 0;
 }
 
-char* GetHashOidByKeyOid(IN char *szKeyOid) {
+char * GetHashOidByKeyOid(IN char *szKeyOid) {
     if (strcmp(szKeyOid, szOID_CP_GOST_R3410EL) == 0) {
 	    return szOID_CP_GOST_R3411;
     }
@@ -45,10 +41,8 @@ char* GetHashOidByKeyOid(IN char *szKeyOid) {
     return NULL;
 }
 
-PyObject * FileTimeToPyDateTime(FILETIME *fileTime)
-{
+PyObject * FileTimeToPyDateTime(FILETIME *fileTime) {
     PyDateTime_IMPORT;
-
     SYSTEMTIME systemTime;
     FileTimeToSystemTime(fileTime, &systemTime);
 
@@ -63,70 +57,33 @@ PyObject * FileTimeToPyDateTime(FILETIME *fileTime)
     );
 }
 
-PyObject * GetCertName(CERT_NAME_BLOB name)
-{
-    DWORD cbSize = CertNameToStr(
-        X509_ASN_ENCODING, // pCertContext->dwCertEncodingType,
-        &name,
-        CERT_X500_NAME_STR,
-        NULL,
-        0
-    );
-
+PyObject * GetCertName(CERT_NAME_BLOB name) {
+    DWORD cbSize = CertNameToStr(MY_ENCODING_TYPE, &name, CERT_X500_NAME_STR, NULL, 0);
     char subject[cbSize];
-    CertNameToStr(
-        X509_ASN_ENCODING,
-        &name,
-        CERT_X500_NAME_STR,
-        subject,
-        cbSize
-    );
+
+    CertNameToStr(MY_ENCODING_TYPE, &name, CERT_X500_NAME_STR, subject, cbSize);
 
     return PyUnicode_FromString(subject);
 }
 
-PyObject * GetThumbprint(PCCERT_CONTEXT pCertContext)
-{
+PyObject * GetThumbprint(PCCERT_CONTEXT pCertContext) {
     DWORD dataSize;
-    CertGetCertificateContextProperty(
-        pCertContext,
-        CERT_HASH_PROP_ID,
-        NULL,
-        &dataSize
-    );
+    CertGetCertificateContextProperty(pCertContext, CERT_HASH_PROP_ID, NULL, &dataSize);
 
     BYTE hash[dataSize];
-    CertGetCertificateContextProperty(
-        pCertContext,
-        CERT_HASH_PROP_ID,
-        hash,
-        &dataSize
-    );
+    CertGetCertificateContextProperty(pCertContext, CERT_HASH_PROP_ID, hash, &dataSize);
 
     DWORD hashStringSize;
-    CryptBinaryToString(
-        hash,
-        dataSize,
-        CRYPT_STRING_HEX,
-        NULL,
-        &hashStringSize
-    );
+    CryptBinaryToString(hash, dataSize, CRYPT_STRING_HEX, NULL, &hashStringSize);
 
     char thumbprint[hashStringSize];
 
-    CryptBinaryToString(
-        hash,
-        dataSize,
-        CRYPT_STRING_HEX,
-        thumbprint,
-        &hashStringSize
-    );
+    CryptBinaryToString(hash, dataSize, CRYPT_STRING_HEX, thumbprint, &hashStringSize);
 
     return PyUnicode_FromString(thumbprint);
 }
 
-PyObject * GetCertAltName(PCCERT_CONTEXT pCertContext)
-{
+PyObject * GetCertAltName(PCCERT_CONTEXT pCertContext) {
     PCERT_EXTENSION pExtension;
 
     pExtension = CertFindExtension(
@@ -135,7 +92,7 @@ PyObject * GetCertAltName(PCCERT_CONTEXT pCertContext)
         pCertContext->pCertInfo->rgExtension
     );
 
-    if (pExtension){
+    if (pExtension) {
         LPVOID pvStructInfo;
         CERT_ALT_NAME_INFO *pAltNameInfo;
         DWORD cbStructInfo;
@@ -171,22 +128,10 @@ PyObject * GetCertAltName(PCCERT_CONTEXT pCertContext)
             if (entry.dwAltNameChoice == CERT_ALT_NAME_DIRECTORY_NAME) {
                 directoryName = entry._empty_union_.DirectoryName;
 
-                DWORD cbSize = CertNameToStr(
-                    X509_ASN_ENCODING,
-                    &directoryName,
-                    CERT_X500_NAME_STR,
-                    NULL,
-                    0
-                );
+                DWORD cbSize = CertNameToStr(X509_ASN_ENCODING, &directoryName, CERT_X500_NAME_STR, NULL, 0);
 
                 char certAltName[cbSize];
-                CertNameToStr(
-                    X509_ASN_ENCODING,
-                    &directoryName,
-                    CERT_X500_NAME_STR,
-                    certAltName,
-                    cbSize
-                );
+                CertNameToStr(X509_ASN_ENCODING, &directoryName, CERT_X500_NAME_STR, certAltName, cbSize);
 
                 LocalFree(pvStructInfo);
 
@@ -200,7 +145,7 @@ PyObject * GetCertAltName(PCCERT_CONTEXT pCertContext)
     return Py_None;
 }
 
-PyObject * GetCertInfo(PCCERT_CONTEXT pCertContext){
+PyObject * GetCertInfo(PCCERT_CONTEXT pCertContext) {
     PyObject * certInfo = PyDict_New();
 
     PyDict_SetItemString(certInfo, "subject", GetCertName(pCertContext->pCertInfo->Subject));
@@ -215,8 +160,7 @@ PyObject * GetCertInfo(PCCERT_CONTEXT pCertContext){
 
 // end helpers ---------------------------------------------------------------------------------------------------------
 
-static PyObject * CreateHash(PyObject *self, PyObject *args)
-{
+static PyObject * CreateHash(PyObject *self, PyObject *args) {
     const char *message;
     Py_ssize_t length;
     const char *algString;
@@ -229,23 +173,17 @@ static PyObject * CreateHash(PyObject *self, PyObject *args)
     DWORD cbHash = 0;
 
     ALG_ID algId = GetAlgId(algString);
-    if (!algId){
+    if (!algId) {
         PyErr_Format(PyExc_ValueError, "Unexpected algorithm: %s", algString);
         return NULL;
     }
 
-    if (!CryptAcquireContext(
-        &hProv,
-        NULL,
-        NULL,
-        PROV_GOST_2012_256,
-        CRYPT_VERIFYCONTEXT
-    )){
+    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_GOST_2012_256, CRYPT_VERIFYCONTEXT)) {
         PyErr_SetString(PyExc_Exception, "CryptAcquireContext failed");
         return NULL;
     }
 
-    if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)){
+    if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)) {
         CryptReleaseContext(hProv, 0);
         PyErr_SetString(PyExc_Exception, "CryptCreateHash failed");
         return NULL;
@@ -253,7 +191,7 @@ static PyObject * CreateHash(PyObject *self, PyObject *args)
 
     BYTE *pbData = (BYTE*)message;
 
-    if (!CryptHashData(hHash, pbData, length, 0)){
+    if (!CryptHashData(hHash, pbData, length, 0)) {
         CryptReleaseContext(hProv, 0);
         CryptDestroyHash(hHash);
 
@@ -264,7 +202,7 @@ static PyObject * CreateHash(PyObject *self, PyObject *args)
     cbHash = 64;
     BYTE rgbHash[cbHash];
 
-    if (!CryptGetHashParam(hHash, HP_HASHVAL, rgbHash, &cbHash, 0)){
+    if (!CryptGetHashParam(hHash, HP_HASHVAL, rgbHash, &cbHash, 0)) {
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
 
@@ -273,22 +211,10 @@ static PyObject * CreateHash(PyObject *self, PyObject *args)
     }
 
     DWORD hashStringSize;
-    CryptBinaryToString(
-        rgbHash,
-        cbHash,
-        CRYPT_STRING_HEX,
-        NULL,
-        &hashStringSize
-    );
+    CryptBinaryToString(rgbHash, cbHash, CRYPT_STRING_HEX, NULL, &hashStringSize);
 
     char hashString[hashStringSize];
-    CryptBinaryToString(
-        rgbHash,
-        cbHash,
-        CRYPT_STRING_HEX,
-        hashString,
-        &hashStringSize
-    );
+    CryptBinaryToString(rgbHash, cbHash, CRYPT_STRING_HEX, hashString, &hashStringSize);
 
     CryptDestroyHash(hHash);
     CryptReleaseContext(hProv, 0);
@@ -296,8 +222,7 @@ static PyObject * CreateHash(PyObject *self, PyObject *args)
     return PyUnicode_FromString(hashString);
 }
 
-static PyObject * GetCertBySubject(PyObject *self, PyObject *args)
-{
+static PyObject * GetCertBySubject(PyObject *self, PyObject *args) {
     const char *storeName;
     const char *subject;
 
@@ -308,15 +233,7 @@ static PyObject * GetCertBySubject(PyObject *self, PyObject *args)
     PCCERT_CONTEXT pCertContext = NULL;
 
     hStoreHandle = CertOpenSystemStore(0, storeName);
-
-    pCertContext = CertFindCertificateInStore(
-        hStoreHandle,
-        PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
-        0,
-        CERT_FIND_SUBJECT_STR,
-        subject,
-        NULL
-    );
+    pCertContext = CertFindCertificateInStore(hStoreHandle, MY_ENCODING_TYPE, 0, CERT_FIND_SUBJECT_STR, subject, NULL);
 
     if (!pCertContext) {
         PyErr_SetString(PyExc_Exception, "Could not find the desired certificate.");
@@ -326,17 +243,12 @@ static PyObject * GetCertBySubject(PyObject *self, PyObject *args)
     PyObject * certInfo = GetCertInfo(pCertContext);
 
     CertFreeCertificateContext(pCertContext);
-
-    CertCloseStore(
-        hStoreHandle,
-        CERT_CLOSE_STORE_CHECK_FLAG
-    );
+    CertCloseStore(hStoreHandle, CERT_CLOSE_STORE_CHECK_FLAG);
 
     return certInfo;
 }
 
-static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args)
-{
+static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args) {
     const char *storeName;
     const char *thumbprint;
 
@@ -349,7 +261,7 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args)
     BYTE pDest[20];
     DWORD nOutLen = 20;
 
-    if(!CryptStringToBinary(thumbprint, 40, CRYPT_STRING_HEX, pDest, &nOutLen, 0, 0)){
+    if (!CryptStringToBinary(thumbprint, 40, CRYPT_STRING_HEX, pDest, &nOutLen, 0, 0)) {
         PyErr_SetString(PyExc_Exception, "CryptStringToBinary failed.");
         return NULL;
     }
@@ -359,15 +271,7 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args)
     para.cbData = nOutLen;
 
     hStoreHandle = CertOpenSystemStore(0, storeName);
-
-    pCertContext = CertFindCertificateInStore(
-        hStoreHandle,
-        PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
-        0,
-        CERT_FIND_HASH,
-        &para,
-        NULL
-    );
+    pCertContext = CertFindCertificateInStore(hStoreHandle, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
 
     if (!pCertContext) {
         CertCloseStore(hStoreHandle, CERT_CLOSE_STORE_CHECK_FLAG);
@@ -378,17 +282,12 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args)
     PyObject * certInfo = GetCertInfo(pCertContext);
 
     CertFreeCertificateContext(pCertContext);
-
-    CertCloseStore(
-        hStoreHandle,
-        CERT_CLOSE_STORE_CHECK_FLAG
-    );
+    CertCloseStore(hStoreHandle, CERT_CLOSE_STORE_CHECK_FLAG);
 
     return certInfo;
 }
 
-static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args)
-{
+static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args) {
     const char *signature;
     Py_ssize_t signatureLength;
 
@@ -396,35 +295,22 @@ static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args)
         return NULL;
 
     BYTE *pDecodedSignContent = (BYTE*)signature;
-
     HCRYPTMSG hMsg;
-
     hMsg = CryptMsgOpenToDecode(MY_ENCODING_TYPE, 0, 0, 0, 0, 0);
 
-    if (!hMsg){
+    if (!hMsg) {
         PyErr_SetString(PyExc_Exception, "CryptMsgOpenToDecode failed.");
         return NULL;
     }
 
-    if(!(CryptMsgUpdate(
-        hMsg,
-        pDecodedSignContent,
-        signatureLength,
-        FALSE)))
-    {
+    if (!CryptMsgUpdate(hMsg, pDecodedSignContent, signatureLength, FALSE)) {
         PyErr_SetString(PyExc_Exception, "CryptMsgUpdate failed.");
         return NULL;
     }
 
     DWORD cbSignerCertInfo;
 
-    if(!CryptMsgGetParam(
-        hMsg,
-        CMSG_SIGNER_CERT_INFO_PARAM,
-        0,
-        NULL,
-        &cbSignerCertInfo))
-    {
+    if (!CryptMsgGetParam(hMsg, CMSG_SIGNER_CERT_INFO_PARAM, 0, NULL, &cbSignerCertInfo)) {
         PyErr_SetString(PyExc_Exception, "CryptMsgGetParam #1 failed.");
         return NULL;
     }
@@ -436,39 +322,22 @@ static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    if (!(CryptMsgGetParam(
-            hMsg,
-            CMSG_SIGNER_CERT_INFO_PARAM,
-            0,
-            pSignerCertInfo,
-            &cbSignerCertInfo
-        )))
-    {
+    if (!CryptMsgGetParam(hMsg, CMSG_SIGNER_CERT_INFO_PARAM, 0, pSignerCertInfo, &cbSignerCertInfo)) {
         PyErr_SetString(PyExc_Exception, "CryptMsgGetParam #2 failed.");
         return NULL;
     }
 
     HCERTSTORE hStoreHandle;
 
-    hStoreHandle = CertOpenStore(
-        CERT_STORE_PROV_MSG,
-        MY_ENCODING_TYPE,
-        0,
-        0,
-        hMsg
-    );
-    if (!hStoreHandle){
+    hStoreHandle = CertOpenStore(CERT_STORE_PROV_MSG, MY_ENCODING_TYPE, 0, 0, hMsg);
+    if (!hStoreHandle) {
         PyErr_SetString(PyExc_Exception, "CertOpenStore failed.");
         return NULL;
     }
 
     PCCERT_CONTEXT pSignerCertContext;
-    pSignerCertContext = CertGetSubjectCertificateFromStore(
-        hStoreHandle,
-        MY_ENCODING_TYPE,
-        pSignerCertInfo
-    );
-    if (!pSignerCertContext){
+    pSignerCertContext = CertGetSubjectCertificateFromStore(hStoreHandle, MY_ENCODING_TYPE, pSignerCertInfo);
+    if (!pSignerCertContext) {
         PyErr_SetString(PyExc_Exception, "CertGetSubjectCertificateFromStore failed.");
         return NULL;
     }
@@ -484,69 +353,31 @@ static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args)
     return certInfo;
 }
 
-static PyObject * InstallCertificate(PyObject *self, PyObject *args)
-{
+static PyObject * InstallCertificate(PyObject *self, PyObject *args) {
     const char *storeName;
-    const char *certData; // строка в base64
+    const char *certData;
+    Py_ssize_t certDataLength;
 
-    if (!PyArg_ParseTuple(args, "ss", &storeName, &certData))
+    if (!PyArg_ParseTuple(args, "sy#", &storeName, &certData, &certDataLength))
         return NULL;
 
-    DWORD nDestinationSize = 0;
-    if (!CryptStringToBinary(
-        certData,
-        strlen(certData),
-        CRYPT_STRING_BASE64,
-        NULL,
-        &nDestinationSize,
-        0,
-        0
-    )){
-        PyErr_SetString(PyExc_Exception, "CryptStringToBinary #1 failed.");
-        return NULL;
-    }
-
-    BYTE pDecodedCertData[nDestinationSize];
-    if(!CryptStringToBinary(
-        certData,
-        strlen(certData),
-        CRYPT_STRING_BASE64,
-        pDecodedCertData,
-        &nDestinationSize,
-        0,
-        0
-    )){
-        PyErr_SetString(PyExc_Exception, "CryptStringToBinary #2 failed.");
-        return NULL;
-    };
-
+    BYTE *pDecodedCertData = (BYTE*)certData;
     PCCERT_CONTEXT pCertContext;
-    pCertContext = CertCreateCertificateContext(
-        X509_ASN_ENCODING,
-        pDecodedCertData,
-        nDestinationSize
-    );
+    pCertContext = CertCreateCertificateContext(MY_ENCODING_TYPE, pDecodedCertData, certDataLength);
 
-    if (!pCertContext){
+    if (!pCertContext) {
         PyErr_SetString(PyExc_Exception, "Can't create cert context.");
         return NULL;
     }
 
     HCERTSTORE hStore;
     hStore = CertOpenSystemStore(0, storeName);
-    if (!hStore){
+    if (!hStore) {
         PyErr_SetString(PyExc_Exception, "CertOpenSystemStore failed.");
         return NULL;
     }
 
-    if (!CertAddCertificateContextToStore(
-            hStore,
-            pCertContext,
-            CERT_STORE_ADD_USE_EXISTING,
-            NULL
-        )
-    )
-    {
+    if (!CertAddCertificateContextToStore(hStore, pCertContext, CERT_STORE_ADD_USE_EXISTING, NULL)) {
         PyErr_SetString(PyExc_Exception, "CertAddCertificateContextToStore failed.");
         return NULL;
     }
@@ -559,8 +390,7 @@ static PyObject * InstallCertificate(PyObject *self, PyObject *args)
     return certInfo;
 }
 
-static PyObject * DeleteCertificate(PyObject *self, PyObject *args)
-{
+static PyObject * DeleteCertificate(PyObject *self, PyObject *args) {
     const char *storeName;
     const char *thumbprint;
 
@@ -584,14 +414,7 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args)
 
     hStore = CertOpenSystemStore(0, storeName);
 
-    pCertContext = CertFindCertificateInStore(
-        hStore,
-        PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
-        0,
-        CERT_FIND_HASH,
-        &para,
-        NULL
-    );
+    pCertContext = CertFindCertificateInStore(hStore, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
 
     if (!pCertContext) {
         PyErr_SetString(PyExc_Exception, "Could not find the desired certificate.");
@@ -609,8 +432,7 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args)
     return Py_None;
 }
 
-static PyObject * Verify(PyObject *self, PyObject *args)
-{
+static PyObject * Verify(PyObject *self, PyObject *args) {
     const char *signature;
     Py_ssize_t signatureLength;
 
@@ -640,14 +462,7 @@ static PyObject * Verify(PyObject *self, PyObject *args)
     PCADES_VERIFICATION_INFO pVerifyInfo;
     PCRYPT_DATA_BLOB pContent = 0;
 
-    if (!CadesVerifyMessage(
-        &verifyPara,
-        0,
-        pbSignature,
-        signatureLength,
-        &pContent,
-        &pVerifyInfo
-    )) {
+    if (!CadesVerifyMessage(&verifyPara, 0, pbSignature, signatureLength, &pContent, &pVerifyInfo)) {
         PyDict_SetItemString(res, "error", PyUnicode_FromFormat("0x%x", GetLastError()));
     }
 
@@ -660,26 +475,14 @@ static PyObject * Verify(PyObject *self, PyObject *args)
 
     DWORD contentLength = 0;
 
-    if(!CryptBinaryToString(
-        pContent->pbData,
-        pContent->cbData,
-        CRYPT_STRING_BASE64,
-        NULL,
-        &contentLength))
-    {
+    if(!CryptBinaryToString(pContent->pbData, pContent->cbData, CRYPT_STRING_BASE64, NULL, &contentLength)) {
         PyErr_Format(PyExc_ValueError, "CryptBinaryToString #1 failed (error 0x%x).", GetLastError());
         return NULL;
     }
 
     char base64Content[contentLength+1];
 
-    if(!CryptBinaryToString(
-        pContent->pbData,
-        pContent->cbData,
-        CRYPT_STRING_BASE64,
-        base64Content,
-        &contentLength
-    )) {
+    if(!CryptBinaryToString(pContent->pbData, pContent->cbData, CRYPT_STRING_BASE64, base64Content, &contentLength)) {
         PyErr_Format(PyExc_ValueError, "CryptBinaryToString #2 failed (error 0x%x).", GetLastError());
         return NULL;
     }
@@ -727,16 +530,7 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
 
     BYTE *pbSignature = (BYTE*)signature;
 
-    if (!CadesVerifyDetachedMessage(
-        &verifyPara,
-        0,
-        pbSignature,
-        signatureLength,
-        1,
-        MessageArray,
-        MessageSizeArray,
-        &pVerifyInfo
-    )) {
+    if (!CadesVerifyDetachedMessage(&verifyPara, 0, pbSignature, signatureLength, 1, MessageArray, MessageSizeArray, &pVerifyInfo)) {
         PyDict_SetItemString(res, "error", PyUnicode_FromFormat("0x%x", GetLastError()));
     }
 
@@ -750,8 +544,7 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
     return res;
 }
 
-static PyObject * Sign(PyObject *self, PyObject *args)
-{
+static PyObject * Sign(PyObject *self, PyObject *args) {
     const char *message;
     Py_ssize_t length;
     const char *thumbprint;
@@ -778,14 +571,7 @@ static PyObject * Sign(PyObject *self, PyObject *args)
 
     hStoreHandle = CertOpenSystemStore(0, storeName);
 
-    pCertContext = CertFindCertificateInStore(
-        hStoreHandle,
-        PKCS_7_ASN_ENCODING | X509_ASN_ENCODING,
-        0,
-        CERT_FIND_HASH,
-        &para,
-        NULL
-    );
+    pCertContext = CertFindCertificateInStore(hStoreHandle, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
 
     if (!pCertContext) {
         PyErr_Format(PyExc_ValueError, "CertFindCertificateInStore failed (error 0x%x).", GetLastError());
@@ -816,40 +602,21 @@ static PyObject * Sign(PyObject *self, PyObject *args)
     MessageArray[0] = pbToBeSigned;
     MessageSizeArray[0] = length;
 
-    if(!CadesSignMessage(
-        &messagePara,
-        detached,
-        1,
-        MessageArray,
-        MessageSizeArray,
-        &pSignedMessage))
-    {
+    if(!CadesSignMessage(&messagePara, detached, 1, MessageArray, MessageSizeArray, &pSignedMessage)) {
         PyErr_Format(PyExc_ValueError, "CadesSignMessage failed (error 0x%x).", GetLastError());
         return NULL;
     }
 
     DWORD base64SignSize = 0;
 
-    if(!CryptBinaryToString(
-        pSignedMessage->pbData,
-        pSignedMessage->cbData,
-        CRYPT_STRING_BASE64,
-        NULL,
-        &base64SignSize))
-    {
+    if(!CryptBinaryToString( pSignedMessage->pbData, pSignedMessage->cbData, CRYPT_STRING_BASE64, NULL, &base64SignSize)) {
         PyErr_Format(PyExc_ValueError, "CryptBinaryToString #1 failed (error 0x%x).", GetLastError());
         return NULL;
     }
 
     char base64SignValue[base64SignSize+1];
 
-    if(!CryptBinaryToString(
-        pSignedMessage->pbData,
-        pSignedMessage->cbData,
-        CRYPT_STRING_BASE64,
-        base64SignValue,
-        &base64SignSize))
-    {
+    if(!CryptBinaryToString(pSignedMessage->pbData, pSignedMessage->cbData, CRYPT_STRING_BASE64, base64SignValue, &base64SignSize)) {
         PyErr_Format(PyExc_ValueError, "CryptBinaryToString #2 failed (error 0x%x).", GetLastError());
         return NULL;
     }

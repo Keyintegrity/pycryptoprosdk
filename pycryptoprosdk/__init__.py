@@ -34,7 +34,7 @@ class CryptoProSDK:
         :return: объект VerificationInfoDetached
         """
         message = self._prepare_message(message)
-        signature = self._prepare_signature(signature)
+        signature = self._prepare_message(signature, decode_b64=True)
         res = libpycades.verify_detached(message, signature)
         return VerificationInfoDetached(res)
 
@@ -81,6 +81,7 @@ class CryptoProSDK:
         :param cert_content: контент сертификата, закодированный в base64
         :return: объект CertInfo
         """
+        cert_content = self._prepare_message(cert_content, decode_b64=True)
         return libpycades.install_certificate(store_name, cert_content)
 
     def delete_certificate(self, store_name, thumbprint):
@@ -97,18 +98,20 @@ class CryptoProSDK:
         :param signature: контент подписи в base64
         :return: объект CertInfo
         """
-        signature = self._prepare_signature(signature)
+        signature = self._prepare_message(signature, decode_b64=True)
         return CertInfo(libpycades.get_signer_cert_from_signature(signature))
 
-    def _prepare_message(self, message):
+    def _prepare_message(self, message, decode_b64=False):
         if isinstance(message, str):
             message = message.encode('utf-8')
+        if decode_b64:
+            message = b64decode(message)
         return message
 
-    def _prepare_signature(self, signature):
-        if isinstance(signature, str):
-            signature = signature.encode('utf-8')
-        return b64decode(signature)
+    # def _prepare_signature(self, signature):
+    #     if isinstance(signature, str):
+    #         signature = signature.encode('utf-8')
+    #     return b64decode(signature)
 
 
 class CertName:
