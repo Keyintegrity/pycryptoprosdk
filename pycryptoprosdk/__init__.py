@@ -108,11 +108,6 @@ class CryptoProSDK:
             message = b64decode(message)
         return message
 
-    # def _prepare_signature(self, signature):
-    #     if isinstance(signature, str):
-    #         signature = signature.encode('utf-8')
-    #     return b64decode(signature)
-
 
 class CertName:
     def __init__(self, cert_name_string):
