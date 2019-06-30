@@ -40,13 +40,21 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertEqual(0, res.verification_status)
         self.assertIsNotNone(res.cert)
 
-    def test_bad_signature(self):
+    def test_bad_signature_verify_detached(self):
         content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt'))
 
         res = self.sdk.verify_detached(content, b64encode(b'signature'))
 
         self.assertEqual(res.verification_status, -1)
         self.assertIsNone(res.cert)
+        self.assertEqual(CRYPT_E_INVALID_MSG_TYPE, res.error)
+
+    def test_bad_signature_verify(self):
+        res = self.sdk.verify(b64encode(b'signature'))
+
+        self.assertEqual(res.verification_status, -1)
+        self.assertIsNone(res.cert)
+        self.assertIsNone(res.message)
         self.assertEqual(CRYPT_E_INVALID_MSG_TYPE, res.error)
 
     def test_hash_CALG_GR3411(self):
