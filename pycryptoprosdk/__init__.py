@@ -109,6 +109,12 @@ class CryptoProSDK:
         return message
 
 
+class Curl:
+    def get(self, url):
+        res = libpycades.curl_get(url)
+        return res
+
+
 class CertName:
     def __init__(self, cert_name_string):
         self.cert_name = cert_name_string

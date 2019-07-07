@@ -8,6 +8,9 @@
 #include <WinCryptEx.h>
 #include <cades.h>
 
+#include <curl/curl.h>
+#include <vector>
+
 #define MY_ENCODING_TYPE (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 
 // start helpers -------------------------------------------------------------------------------------------------------
@@ -635,6 +638,44 @@ static PyObject * Sign(PyObject *self, PyObject *args) {
     return PyUnicode_FromString(base64SignValue);
 }
 
+/*CURL----------------------------------------------------------------------------------------------------------------*/
+
+static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+    ((std::string*)userp)->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
+
+static PyObject * CurlGet(PyObject *self, PyObject *args) {
+    const char *url;
+
+    if (!PyArg_ParseTuple(args, "s", &url))
+        return NULL;
+
+    CURL *curl = curl_easy_init();
+    std::string readBuffer;
+
+    PyObject * result = PyDict_New();
+    PyDict_SetItemString(result, "content", Py_None);
+    PyDict_SetItemString(result, "status_code", Py_None);
+
+    if (curl) {
+        CURLcode response;
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+        response = curl_easy_perform(curl);
+        PyDict_SetItemString(result, "content", PyUnicode_FromString(readBuffer.c_str()));
+
+        long response_code;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+        PyDict_SetItemString(result, "status_code", PyLong_FromLong(response_code));
+
+        curl_easy_cleanup(curl);
+    }
+    return result;
+}
+
 
 static PyMethodDef Methods[] = {
     {"create_hash", CreateHash, METH_VARARGS},
@@ -646,6 +687,7 @@ static PyMethodDef Methods[] = {
     {"verify", Verify, METH_VARARGS},
     {"verify_detached", VerifyDetached, METH_VARARGS},
     {"sign", Sign, METH_VARARGS},
+    {"curl_get", CurlGet, METH_VARARGS},
     {NULL, NULL, 0, NULL}
 };
 

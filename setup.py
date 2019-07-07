@@ -24,6 +24,7 @@ libpycades = Extension(
         '-lcapi10',
         '-lcades',
         '-lrdrsup',
+        '-lcpcurl',
     ]
 )
 
