@@ -1,224 +1,90 @@
-import ctypes
-import os
 from urllib.parse import urlencode
-
-from pycryptoprosdk.libcurl import const
-from pycryptoprosdk.libcurl.exceptions import (
-    CurlException,
-    CouldntConnect,
-    CouldntResolve,
-)
-
-
-write_function_wrap = ctypes.CFUNCTYPE(
-    ctypes.c_size_t,
-    ctypes.c_char_p,
-    ctypes.c_size_t,
-    ctypes.c_size_t,
-    ctypes.POINTER(ctypes.c_char_p)
-)
-
-
-lib = ctypes.CDLL(os.environ.get('LIBCURL') or '/opt/cprocsp/lib/amd64/libcpcurl.so')
-
-
-def write_function(cont, size, nmemb, userp):
-    userp[0] = cont
-    return size * nmemb
-
-
-class Response:
-    def __init__(self, status_code, text):
-        self.status_code = status_code
-        self.text = text
-
-
-class CurlForm:
-    def __init__(self):
-        self._curl_formadd = lib.curl_formadd
-        self._curl_formfree = lib.curl_formfree
-        self.post = ctypes.pointer(const.CurlHttpPost())
-        self.last = const.CurlHttpPost()
-
-    def add_field(self, name, value):
-        self._curl_formadd(
-            ctypes.byref(self.post),
-            ctypes.byref(self.last),
-            const.CURLFORM_COPYNAME, name.encode('utf-8'),
-            const.CURLFORM_COPYCONTENTS, value.encode('utf-8'),
-            const.CURLFORM_END
-        )
-
-    def add_file_field(self, field_name, file):
-        types = [str, tuple]
-        if type(file) not in types:
-            raise ValueError("'file' variable must be '{}', not '{}'".format(types, type(file)))
-
-        self._curl_formadd(*self._get_file_field_opts(field_name, file))
-
-    def free(self):
-        self._curl_formfree(self.post)
-
-    def _get_file_field_opts(self, field_name, file):
-        opts = [
-            ctypes.byref(self.post),
-            ctypes.byref(self.last),
-            const.CURLFORM_COPYNAME, field_name.encode('utf-8'),
-        ]
-        if type(file) is str:
-            opts.extend([const.CURLFORM_FILE, file.encode('utf-8')])
-
-        if type(file) is tuple:
-            file_name = file[0]
-            file_data = file[1]
-
-            length = len(file_data)
-
-            opts.extend([
-                const.CURLFORM_BUFFER, file_name.encode('utf-8'),
-                const.CURLFORM_BUFFERPTR, ctypes.c_char_p(file_data),
-                const.CURLFORM_BUFFERLENGTH, ctypes.c_long(length),
-            ])
-
-            if len(file) == 3:
-                content_type = file[2]
-                opts.extend([const.CURLFORM_CONTENTTYPE, content_type.encode('utf-8')])
-
-        opts.append(const.CURLFORM_END)
-
-        return opts
+from pycryptoprosdk import libcpcurl
+from . import exceptions
 
 
 class Curl:
-    def __init__(self):
-        self._curl_easy_init = lib.curl_easy_init
-        self._curl_easy_init.restype = ctypes.POINTER(ctypes.c_void_p)
-
-        self._curl_easy_setopt = lib.curl_easy_setopt
-        self._curl_easy_perform = lib.curl_easy_perform
-        self._curl_easy_getinfo = lib.curl_easy_getinfo
-        self._curl_easy_cleanup = lib.curl_easy_cleanup
-
-        self._curl_easy_strerror = lib.curl_easy_strerror
-        self._curl_easy_strerror.restype = ctypes.c_char_p
-
-        self._curl = self._curl_easy_init()
-        if not self._curl:
-            raise CurlException('Failed to initialize curl')
-
-    def get(self, url):
+    def get(self, url, verbose=False):
         """
         from pycryptoprosdk.libcurl import Curl
-
         curl = Curl()
         res = curl.get('http://example.com/test/')
-
         print(res.status_code)
         print(res.text)
-
-        curl.cleanup()
         """
-        self._set_opt(const.CURLOPT_URL, url.encode('utf-8'))
+        res = libcpcurl.curl_get(url, verbose)
+        return Response(res)
 
-        s = ctypes.c_char_p()
-        self._set_opt(const.CURLOPT_WRITEFUNCTION, write_function_wrap(write_function))
-        self._set_opt(const.CURLOPT_WRITEDATA, ctypes.byref(s))
-
-        self._perform()
-        res = self._get_response(s.value)
-
-        return res
-
-    def post(self, url, data, files=None, force_multipart=False):
+    def post(self, url, data=None, files=None, force_multipart=False, verbose=False):
         """
         from pycryptoprosdk.libcurl import Curl
-
         curl = Curl()
         res = curl.post(
             url='http://example.com/test/',
             data={
-                'login': '1024494001',
-                'password': 'd8Z7rHL8',
-                'refId': '4db0c3d7-96f3-4ca1-b4c3-88eaeeb52b13',
+                'field1': 'value1',
+                'field2': 'value2',
             },
             files={
-                'file': '/opt/project/tests/files/img.png',
-                'file1': ('test.txt', b'content'),
+                'file1': ('foo.txt', b'foo content'),
+                'file2': ('bar.txt', b'bar content'),
             }
         )
-
         print(res.status_code)
         print(res.text)
-
-        curl.cleanup()
         """
-        form = None
-
-        self._set_opt(const.CURLOPT_URL, url.encode('utf-8'))
-
-        if files or force_multipart:
-            form = self._get_form(data, files)
-            self._set_opt(const.CURLOPT_HTTPPOST, form.post)
-        else:
-            query_string = urlencode(data)
-            self._set_opt(const.CURLOPT_POSTFIELDS, query_string.encode('utf-8'))
-
-        s = ctypes.c_char_p()
-        self._set_opt(const.CURLOPT_WRITEFUNCTION, write_function_wrap(write_function))
-        self._set_opt(const.CURLOPT_WRITEDATA, ctypes.byref(s))
-
-        self._perform()
-
-        if form:
-            form.free()
-
-        res = self._get_response(s.value)
-
-        return res
-
-    def cleanup(self):
-        self._curl_easy_cleanup(self._curl)
-
-    def _set_opt(self, opt, value):
-        setopt_res = self._curl_easy_setopt(self._curl, opt, value)
-        if setopt_res != 0:
-            raise CurlException('Failed to set option: {}. Error code: {}'.format(
-                self._curl_easy_strerror(setopt_res).decode('utf-8'),
-                setopt_res
-            ))
-
-    def _get_form(self, data, files):
-        form = CurlForm()
-        for field_name, value in data.items():
-            form.add_field(field_name, value)
+        data = self._prepare_data(data, is_multipart=files or force_multipart)
 
         if files:
-            for field_name, file in files.items():
-                if type(file) not in (str, tuple):
-                    raise ValueError("files item must be 'str' or 'tuple', not '{}'".format(type(files)))
+            files = self._prepare_files(files)
 
-                form.add_file_field(field_name, file)
+        res = libcpcurl.curl_post(url, data, files, verbose)
 
-        return form
+        return Response(res)
 
-    def _perform(self):
-        perform_res = self._curl_easy_perform(self._curl)
-        if perform_res != 0:
-            if perform_res == 6:
-                raise CouldntResolve('Couldn\'t resolve host.')
+    def _encode(self, v):
+        if isinstance(v, str):
+            return v.encode('utf-8')
+        return v
 
-            if perform_res == 7:
-                raise CouldntConnect('Failed to connect to host or proxy.')
+    def _prepare_data(self, data, is_multipart):
+        if data is None:
+            return b''
 
-            raise CurlException('Failed to perform request. Error {}'.format(perform_res))
+        if is_multipart:
+            return [
+                [
+                    self._encode(k),
+                    self._encode(v),
+                ] for k, v in data.items()
+            ]
+        return urlencode(data).encode('utf-8')
 
-    def _get_response(self, content):
-        status_code = ctypes.c_long()
-        getinfo_res = self._curl_easy_getinfo(self._curl, const.CURLINFO_RESPONSE_CODE, ctypes.byref(status_code))
-        if getinfo_res != 0:
-            raise CurlException('Failed to get CURLINFO_RESPONSE_CODE. Error {}'.format(getinfo_res))
+    def _prepare_files(self, files):
+        return [
+            [
+                self._encode(k),
+                self._encode(v[0]),
+                self._encode(v[1]),
+                self._encode(v[2]),
+            ] for k, v in files.items()
+        ]
 
-        return Response(
-            status_code=status_code.value,
-            text=content
-        )
+
+class Response:
+    def __init__(self, res):
+        self._check_perform_code(res['perform_code'])
+        self.status_code = res['status_code']
+        self.text = res['content']
+
+    def _check_perform_code(self, perform_code):
+        if perform_code == 0:
+            return
+
+        if perform_code == 6:
+            raise exceptions.CouldntResolve('Couldn\'t resolve host.')
+
+        if perform_code == 7:
+            raise exceptions.CouldntConnect('Failed to connect to host or proxy.')
+
+        raise exceptions.CurlException('Failed to perform request. Error {}'.format(perform_code))

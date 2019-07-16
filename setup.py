@@ -28,6 +28,18 @@ libpycades = Extension(
     ]
 )
 
+libcpcurl = Extension(
+    name='pycryptoprosdk.libcpcurl',
+    sources=[
+        'pycryptoprosdk/libcpcurl.cpp',
+    ],
+    language='c++',
+    extra_link_args=[
+        '-L/opt/cprocsp/lib/amd64',
+        '-lcpcurl',
+    ]
+)
+
 
 setup(
     name='pycryptoprosdk',
@@ -38,5 +50,6 @@ setup(
     ],
     ext_modules=[
         libpycades,
+        libcpcurl,
     ]
 )

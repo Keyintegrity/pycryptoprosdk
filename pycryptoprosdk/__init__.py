@@ -1,5 +1,6 @@
 import re
 from base64 import b64decode
+
 from pycryptoprosdk import libpycades
 
 
@@ -107,12 +108,6 @@ class CryptoProSDK:
         if decode_b64:
             message = b64decode(message)
         return message
-
-
-class Curl:
-    def get(self, url):
-        res = libpycades.curl_get(url)
-        return res
 
 
 class CertName:
