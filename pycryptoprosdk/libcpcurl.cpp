@@ -10,54 +10,37 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     return size * nmemb;
 }
 
-static PyObject * CurlGet(PyObject *self, PyObject *args) {
-    const char *url;
-    int verbose;
+void SetHeaders(CURL *curl, PyObject *headers) {
+    if (headers != Py_None) {
+        struct curl_slist *chunk = NULL;
+        PyObject *headerItem;
+        char *headerName;
+        char *headerValue;
+        int i;
 
-    if (!PyArg_ParseTuple(args, "si", &url, &verbose))
-        return NULL;
+        for (i = 0; i < PyList_Size(headers); i++) {
+            headerItem = PyList_GetItem(headers, i);
+            headerName = PyBytes_AsString(PyList_GetItem(headerItem, 0));
+            headerValue = PyBytes_AsString(PyList_GetItem(headerItem, 1));
 
-    CURL *curl = curl_easy_init();
-    std::string readBuffer;
+            std::string s = "";
+            s += headerName;
+            s += ": ";
+            s += headerValue;
 
-    PyObject * result = PyDict_New();
-    PyDict_SetItemString(result, "content", Py_None);
-    PyDict_SetItemString(result, "status_code", Py_None);
+            chunk = curl_slist_append(chunk, s.c_str());
+        }
 
-    if (!curl) {
-
-    }
-
-    CURLcode performCode;
-
-    if (verbose)
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    performCode = curl_easy_perform(curl);
-
-    PyDict_SetItemString(result, "perform_code", PyLong_FromLong(performCode));
-    PyDict_SetItemString(result, "content", PyUnicode_FromString(readBuffer.c_str()));
-
-    long response_code;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-    PyDict_SetItemString(result, "status_code", PyLong_FromLong(response_code));
-
-    curl_easy_cleanup(curl);
-
-    return result;
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+    };
 }
 
-static PyObject * CurlPost(PyObject *self, PyObject *args) {
+static PyObject * CurlGet(PyObject *self, PyObject *args) {
     const char *url;
-    PyObject* data;
-    PyObject* files;
+    PyObject *headers;
     int verbose;
 
-    if (!PyArg_ParseTuple(args, "sOOi", &url, &data, &files, &verbose))
+    if (!PyArg_ParseTuple(args, "sOi", &url, &headers, &verbose))
         return NULL;
 
     CURL *curl = curl_easy_init();
@@ -67,14 +50,59 @@ static PyObject * CurlPost(PyObject *self, PyObject *args) {
         return NULL;
     }
 
+    if (verbose)
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+
+    std::string readBuffer;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+    SetHeaders(curl, headers);
+
+    CURLcode performCode = curl_easy_perform(curl);
+
+    long response_code;
     PyObject * result = PyDict_New();
-    PyDict_SetItemString(result, "content", Py_None);
-    PyDict_SetItemString(result, "status_code", Py_None);
+
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    PyDict_SetItemString(result, "status_code", PyLong_FromLong(response_code));
+    PyDict_SetItemString(result, "perform_code", PyLong_FromLong(performCode));
+    PyDict_SetItemString(result, "content", PyUnicode_FromString(readBuffer.c_str()));
+
+    curl_easy_cleanup(curl);
+
+    return result;
+}
+
+static PyObject * CurlPost(PyObject *self, PyObject *args) {
+    const char *url;
+    PyObject *data;
+    PyObject *files;
+    PyObject *headers;
+    int verbose;
+
+    if (!PyArg_ParseTuple(args, "sOOOi", &url, &data, &files, &headers, &verbose))
+        return NULL;
+
+    CURL *curl = curl_easy_init();
+
+    if (!curl) {
+        PyErr_SetString(PyExc_Exception, "curl_easy_init failed");
+        return NULL;
+    }
 
     if (verbose)
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 
     std::string readBuffer;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+    SetHeaders(curl, headers);
 
     Py_ssize_t i, fileSize;
     PyObject *dataItem;
@@ -85,8 +113,6 @@ static PyObject * CurlPost(PyObject *self, PyObject *args) {
     char *value;
     char *fileName;
     char *fileContent;
-
-    curl_easy_setopt(curl, CURLOPT_URL, url);
 
     if (data != Py_None) {
         if (PyList_Check(data)) {
@@ -143,20 +169,15 @@ static PyObject * CurlPost(PyObject *self, PyObject *args) {
         curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
     }
 
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    CURLcode performCode;
-
-    performCode = curl_easy_perform(curl);
-
-    PyDict_SetItemString(result, "perform_code", PyLong_FromLong(performCode));
-    PyDict_SetItemString(result, "content", PyUnicode_FromString(readBuffer.c_str()));
+    CURLcode performCode = curl_easy_perform(curl);
 
     long response_code;
+    PyObject * result = PyDict_New();
 
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     PyDict_SetItemString(result, "status_code", PyLong_FromLong(response_code));
+    PyDict_SetItemString(result, "perform_code", PyLong_FromLong(performCode));
+    PyDict_SetItemString(result, "content", PyUnicode_FromString(readBuffer.c_str()));
 
     curl_easy_cleanup(curl);
 

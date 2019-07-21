@@ -1,10 +1,11 @@
 from urllib.parse import urlencode
+
 from pycryptoprosdk import libcpcurl
 from . import exceptions
 
 
 class Curl:
-    def get(self, url, verbose=False):
+    def get(self, url, headers=None, verbose=False):
         """
         from pycryptoprosdk.libcurl import Curl
         curl = Curl()
@@ -12,10 +13,12 @@ class Curl:
         print(res.status_code)
         print(res.text)
         """
-        res = libcpcurl.curl_get(url, verbose)
+        if headers:
+            headers = self._prepare_headers(headers)
+        res = libcpcurl.curl_get(url, headers, verbose)
         return Response(res)
 
-    def post(self, url, data=None, files=None, force_multipart=False, verbose=False):
+    def post(self, url, data=None, files=None, headers=None, force_multipart=False, verbose=False):
         """
         from pycryptoprosdk.libcurl import Curl
         curl = Curl()
@@ -38,7 +41,10 @@ class Curl:
         if files:
             files = self._prepare_files(files)
 
-        res = libcpcurl.curl_post(url, data, files, verbose)
+        if headers:
+            headers = self._prepare_headers(headers)
+
+        res = libcpcurl.curl_post(url, data, files, headers, verbose)
 
         return Response(res)
 
@@ -61,23 +67,40 @@ class Curl:
         return urlencode(data).encode('utf-8')
 
     def _prepare_files(self, files):
+        res = []
+
+        for filename, values in files.items():
+            l = [
+                self._encode(filename),
+                self._encode(values[0]),
+                self._encode(values[1]),
+            ]
+            if len(values) == 3:
+                l.append(self._encode(values[2]))
+
+            res.append(l)
+
+        return res
+
+    def _prepare_headers(self, headers):
         return [
             [
                 self._encode(k),
-                self._encode(v[0]),
-                self._encode(v[1]),
-                self._encode(v[2]),
-            ] for k, v in files.items()
+                self._encode(v),
+            ] for k, v in headers.items()
         ]
 
 
 class Response:
     def __init__(self, res):
-        self._check_perform_code(res['perform_code'])
+        self._res = res
+        self._check_perform_code()
         self.status_code = res['status_code']
         self.text = res['content']
 
-    def _check_perform_code(self, perform_code):
+    def _check_perform_code(self):
+        perform_code = self._res['perform_code']
+
         if perform_code == 0:
             return
 
