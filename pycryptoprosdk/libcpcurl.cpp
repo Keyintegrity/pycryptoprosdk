@@ -35,56 +35,19 @@ void SetHeaders(CURL *curl, PyObject *headers) {
     };
 }
 
-static PyObject * CurlGet(PyObject *self, PyObject *args) {
-    const char *url;
-    PyObject *headers;
-    int verbose;
-
-    if (!PyArg_ParseTuple(args, "sOi", &url, &headers, &verbose))
-        return NULL;
-
-    CURL *curl = curl_easy_init();
-
-    if (!curl) {
-        PyErr_SetString(PyExc_Exception, "curl_easy_init failed");
-        return NULL;
-    }
-
-    if (verbose)
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-
-    std::string readBuffer;
-
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    SetHeaders(curl, headers);
-
-    CURLcode performCode = curl_easy_perform(curl);
-
-    long response_code;
-    PyObject * result = PyDict_New();
-
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-    PyDict_SetItemString(result, "status_code", PyLong_FromLong(response_code));
-    PyDict_SetItemString(result, "perform_code", PyLong_FromLong(performCode));
-    PyDict_SetItemString(result, "content", PyUnicode_FromString(readBuffer.c_str()));
-
-    curl_easy_cleanup(curl);
-
-    return result;
-}
-
-static PyObject * CurlPost(PyObject *self, PyObject *args) {
+static PyObject * Request(PyObject *self, PyObject *args) {
+    const char *method;
     const char *url;
     PyObject *data;
     PyObject *files;
     PyObject *headers;
     int verbose;
 
-    if (!PyArg_ParseTuple(args, "sOOOi", &url, &data, &files, &headers, &verbose))
+    if (!PyArg_ParseTuple(args, "ssOOOi", &method, &url, &data, &files, &headers, &verbose))
         return NULL;
+
+    struct curl_httppost* post = NULL;
+    struct curl_httppost* last = NULL;
 
     CURL *curl = curl_easy_init();
 
@@ -104,69 +67,70 @@ static PyObject * CurlPost(PyObject *self, PyObject *args) {
 
     SetHeaders(curl, headers);
 
-    Py_ssize_t i, fileSize;
-    PyObject *dataItem;
-    PyObject *fileItem;
-    struct curl_httppost* post = NULL;
-    struct curl_httppost* last = NULL;
-    char *fieldName;
-    char *value;
-    char *fileName;
-    char *fileContent;
+    if (std::string("POST") == method) {
+        Py_ssize_t i, fileSize;
+        PyObject *dataItem;
+        PyObject *fileItem;
 
-    if (data != Py_None) {
-        if (PyList_Check(data)) {
-            for (i = 0; i < PyList_Size(data); i++) {
-                dataItem = PyList_GetItem(data, i);
-                fieldName = PyBytes_AsString(PyList_GetItem(dataItem, 0));
-                value = PyBytes_AsString(PyList_GetItem(dataItem, 1));
+        char *fieldName;
+        char *value;
+        char *fileName;
+        char *fileContent;
 
-                curl_formadd(&post, &last, CURLFORM_COPYNAME, fieldName, CURLFORM_COPYCONTENTS, value,CURLFORM_END);
+        if (data != Py_None) {
+            if (PyList_Check(data)) {
+                for (i = 0; i < PyList_Size(data); i++) {
+                    dataItem = PyList_GetItem(data, i);
+                    fieldName = PyBytes_AsString(PyList_GetItem(dataItem, 0));
+                    value = PyBytes_AsString(PyList_GetItem(dataItem, 1));
+
+                    curl_formadd(&post, &last, CURLFORM_COPYNAME, fieldName, CURLFORM_COPYCONTENTS, value,CURLFORM_END);
+                }
+                curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
+            } else if (PyBytes_Check(data)) {
+                char *queryString = PyBytes_AsString(data);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, queryString);
+            } else {
+                PyErr_SetString(PyExc_Exception, "The argument 'data' must be of type 'list' or 'bytes'");
+                return NULL;
+            }
+        }
+
+        if (files != Py_None) {
+            if (!PyList_Check(files)) {
+                PyErr_SetString(PyExc_Exception, "The argument 'files' must be of type 'list'");
+                return NULL;
+            }
+            for (i = 0; i < PyList_Size(files); i++) {
+                fileItem = PyList_GetItem(files, i);
+                fieldName = PyBytes_AsString(PyList_GetItem(fileItem, 0));
+                fileName = PyBytes_AsString(PyList_GetItem(fileItem, 1));
+                fileContent = PyBytes_AsString(PyList_GetItem(fileItem, 2));
+                fileSize = PyBytes_Size(PyList_GetItem(fileItem, 2));
+
+                if (PyList_Size(fileItem) == 4){
+                    curl_formadd(
+                        &post, &last,
+                        CURLFORM_COPYNAME, fieldName,
+                        CURLFORM_BUFFER, fileName,
+                        CURLFORM_BUFFERPTR, fileContent,
+                        CURLFORM_BUFFERLENGTH, fileSize,
+                        CURLFORM_CONTENTTYPE, PyBytes_AsString(PyList_GetItem(fileItem, 3)),
+                        CURLFORM_END
+                    );
+                } else {
+                    curl_formadd(
+                        &post, &last,
+                        CURLFORM_COPYNAME, fieldName,
+                        CURLFORM_BUFFER, fileName,
+                        CURLFORM_BUFFERPTR, fileContent,
+                        CURLFORM_BUFFERLENGTH, fileSize,
+                        CURLFORM_END
+                    );
+                }
             }
             curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
-        } else if (PyBytes_Check(data)) {
-            char *queryString = PyBytes_AsString(data);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, queryString);
-        } else {
-            PyErr_SetString(PyExc_Exception, "The argument 'data' must be of type 'list' or 'bytes'");
-            return NULL;
         }
-    }
-
-    if (files != Py_None) {
-        if (!PyList_Check(files)) {
-            PyErr_SetString(PyExc_Exception, "The argument 'files' must be of type 'list'");
-            return NULL;
-        }
-        for (i = 0; i < PyList_Size(files); i++) {
-            fileItem = PyList_GetItem(files, i);
-            fieldName = PyBytes_AsString(PyList_GetItem(fileItem, 0));
-            fileName = PyBytes_AsString(PyList_GetItem(fileItem, 1));
-            fileContent = PyBytes_AsString(PyList_GetItem(fileItem, 2));
-            fileSize = PyBytes_Size(PyList_GetItem(fileItem, 2));
-
-            if (PyList_Size(fileItem) == 4){
-                curl_formadd(
-                    &post, &last,
-                    CURLFORM_COPYNAME, fieldName,
-                    CURLFORM_BUFFER, fileName,
-                    CURLFORM_BUFFERPTR, fileContent,
-                    CURLFORM_BUFFERLENGTH, fileSize,
-                    CURLFORM_CONTENTTYPE, PyBytes_AsString(PyList_GetItem(fileItem, 3)),
-                    CURLFORM_END
-                );
-            } else {
-                curl_formadd(
-                    &post, &last,
-                    CURLFORM_COPYNAME, fieldName,
-                    CURLFORM_BUFFER, fileName,
-                    CURLFORM_BUFFERPTR, fileContent,
-                    CURLFORM_BUFFERLENGTH, fileSize,
-                    CURLFORM_END
-                );
-            }
-        }
-        curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
     }
 
     CURLcode performCode = curl_easy_perform(curl);
@@ -188,8 +152,7 @@ static PyObject * CurlPost(PyObject *self, PyObject *args) {
 }
 
 static PyMethodDef Methods[] = {
-    {"curl_get", CurlGet, METH_VARARGS},
-    {"curl_post", CurlPost, METH_VARARGS},
+    {"request", Request, METH_VARARGS},
     {NULL, NULL, 0, NULL}
 };
 

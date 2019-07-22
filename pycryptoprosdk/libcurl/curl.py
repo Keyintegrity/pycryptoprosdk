@@ -13,10 +13,7 @@ class Curl:
         print(res.status_code)
         print(res.text)
         """
-        if headers:
-            headers = self._prepare_headers(headers)
-        res = libcpcurl.curl_get(url, headers, verbose)
-        return Response(res)
+        return self._request(method='get', url=url, headers=headers, verbose=verbose)
 
     def post(self, url, data=None, files=None, headers=None, force_multipart=False, verbose=False):
         """
@@ -36,6 +33,11 @@ class Curl:
         print(res.status_code)
         print(res.text)
         """
+        return self._request('post', url, data, files, headers, force_multipart, verbose)
+
+    def _request(self, method, url, data=None, files=None, headers=None, force_multipart=False, verbose=False):
+        method = method.upper()
+
         data = self._prepare_data(data, is_multipart=files or force_multipart)
 
         if files:
@@ -44,7 +46,7 @@ class Curl:
         if headers:
             headers = self._prepare_headers(headers)
 
-        res = libcpcurl.curl_post(url, data, files, headers, verbose)
+        res = libcpcurl.request(method, url, data, files, headers, verbose)
 
         return Response(res)
 
