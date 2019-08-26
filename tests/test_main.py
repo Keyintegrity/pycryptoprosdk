@@ -4,7 +4,7 @@ from base64 import b64encode
 from datetime import datetime
 
 from pycryptoprosdk import CryptoProSDK
-from pycryptoprosdk import Subject
+from pycryptoprosdk import Subject, CertName
 from pycryptoprosdk.error_codes import CRYPT_E_INVALID_MSG_TYPE
 
 files_dir = os.path.join(os.path.dirname(__file__), 'files')
@@ -156,6 +156,20 @@ class TestCryptoProSDK(unittest.TestCase):
     #     signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'test.txt.sig'))
     #     cert = self.sdk.get_signer_cert_from_signature(signature_content)
     #     self.assertDictEqual(cert.alt_name.as_dict(), {'OGRNIP': '123456789012345'})
+
+
+class TestCertName(unittest.TestCase):
+    def test_subject_as_string(self):
+        cert_name = CertName('CN=Иванов Иван Иванович, INN=1234567890, 2.5.4.5="#1303323739"')
+        cert_name_dict = cert_name.as_dict()
+        self.assertDictEqual(
+            cert_name_dict,
+            {
+                'CN': 'Иванов Иван Иванович',
+                'INN': '1234567890',
+                '2.5.4.5': '"#1303323739"'
+            }
+        )
 
 
 if __name__ == '__main__':

@@ -40,7 +40,7 @@ class CertName:
 
     def as_dict(self):
         data = {}
-        for item in re.compile(r',(?<!^)\s+(?=[A-Z])(?!.\s)').split(self.cert_name):
+        for item in re.compile(r',(?<!^)\s+(?=[A-Z1-9])(?!.\s)').split(self.cert_name):
             try:
                 k, v = item.split('=')
                 data[k] = v
