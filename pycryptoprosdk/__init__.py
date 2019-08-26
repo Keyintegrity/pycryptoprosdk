@@ -36,7 +36,7 @@ class CertName:
         return len(self.as_string())
 
     def as_string(self):
-        return self.cert_name
+        return self.cert_name.replace('\r\n', ', ')
 
     def as_dict(self):
         data = {}
