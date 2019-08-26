@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #define MY_ENCODING_TYPE (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
+#define CERT_NAME_STR_TYPE (CERT_X500_NAME_STR | CERT_NAME_STR_CRLF_FLAG)
 
 
 typedef struct {
@@ -72,7 +73,7 @@ CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
     CertNameToStr(
         X509_ASN_ENCODING,
         &pCertContext->pCertInfo->Subject,
-        CERT_X500_NAME_STR,
+        CERT_NAME_STR_TYPE,
         certInfo.subject,
         1024
     );
@@ -80,7 +81,7 @@ CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
     CertNameToStr(
         X509_ASN_ENCODING,
         &pCertContext->pCertInfo->Issuer,
-        CERT_X500_NAME_STR,
+        CERT_NAME_STR_TYPE,
         certInfo.issuer,
         1024
     );
@@ -168,7 +169,7 @@ CERTIFICATE_INFO GetCertInfo(PCCERT_CONTEXT pCertContext){
                 CertNameToStr(
                     X509_ASN_ENCODING,
                     &directoryName,
-                    CERT_X500_NAME_STR,
+                    CERT_NAME_STR_TYPE,
                     certInfo.altName,
                     1024
                 );

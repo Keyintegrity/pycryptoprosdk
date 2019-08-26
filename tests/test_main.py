@@ -74,11 +74,23 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertIsNotNone(cert)
         self.assertEqual(
             cert.subject.as_string(),
-            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
+            '\r\n'.join([
+                'E=support@cryptopro.ru',
+                'C=RU',
+                'L=Moscow',
+                'O=CRYPTO-PRO LLC',
+                'CN=CRYPTO-PRO Test Center 2'
+            ])
         )
         self.assertEqual(
             cert.issuer.as_string(),
-            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
+            '\r\n'.join([
+                'E=support@cryptopro.ru',
+                'C=RU',
+                'L=Moscow',
+                'O=CRYPTO-PRO LLC',
+                'CN=CRYPTO-PRO Test Center 2'
+            ])
         )
         self.assertEqual(
             cert.valid_from,
@@ -120,12 +132,24 @@ class TestCryptoProSDK(unittest.TestCase):
 
         self.assertEqual(
             cert.issuer.as_string(),
-            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
+            '\r\n'.join([
+                'E=support@cryptopro.ru',
+                'C=RU',
+                'L=Moscow',
+                'O=CRYPTO-PRO LLC',
+                'CN=CRYPTO-PRO Test Center 2'
+            ])
         )
         self.assertEqual(
             cert.subject.as_string(),
-            'CN=Иванов Иван Иванович, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", '
-            'L=Город'
+            '\r\n'.join([
+                'CN=Иванов Иван Иванович',
+                'INN=123456789047',
+                'OGRN=1123300000053',
+                'SNILS=12345678901',
+                'STREET="Улица, дом"',
+                'L=Город'
+            ])
         )
         subject_dict = cert.subject.as_dict()
         self.assertEqual(subject_dict['CN'], 'Иванов Иван Иванович')
@@ -143,32 +167,34 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertEqual(cert.subject.city, 'Город')
 
     def test_inn_original(self):
-        signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
-        cert = self.sdk.get_signer_cert_from_signature(signature_content)
-        subject_list = cert.subject.cert_name.split(', ')
-        subject_list[1] = 'INN=003456789047'
-        subject_string = ', '.join(subject_list)
+        subject_string = '\r\n'.join(['INN=003456789047'])
         subject = Subject(subject_string)
         self.assertEqual(subject.inn_original, '003456789047')
         self.assertEqual(subject.inn, '3456789047')
 
     # def test_get_signer_alt_name_from_signature(self):
-    #     signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'test.txt.sig'))
+    #     signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'test_alt_name.txt.sig'))
     #     cert = self.sdk.get_signer_cert_from_signature(signature_content)
     #     self.assertDictEqual(cert.alt_name.as_dict(), {'OGRNIP': '123456789012345'})
 
 
 class TestCertName(unittest.TestCase):
     def test_subject_as_string(self):
-        cert_name = CertName('CN=Иванов Иван Иванович, INN=1234567890, 2.5.4.5="#1303323739"')
+        cert_name = CertName('\r\n'.join([
+            'CN=Иванов Иван Иванович',
+            'INN=1234567890',
+            'STREET=ул. Горшкова, дом 4, 1',
+            '2.5.4.5="#1303323739"'
+        ]))
         cert_name_dict = cert_name.as_dict()
         self.assertDictEqual(
-            cert_name_dict,
             {
                 'CN': 'Иванов Иван Иванович',
                 'INN': '1234567890',
-                '2.5.4.5': '"#1303323739"'
-            }
+                '2.5.4.5': '"#1303323739"',
+                'STREET': 'ул. Горшкова, дом 4, 1',
+            },
+            cert_name_dict,
         )
 
 
