@@ -22,10 +22,11 @@ libpycades = Extension(
 
 setup(
     name='pycryptoprosdk',
-    version='0.1.3',
+    version='0.1.4',
     url='https://github.com/Keyintegrity/pycryptoprosdk',
     author='uishnik',
     author_email='uishnik@yandex.ru',
+    long_description=open('./README.rst').read(),
     packages=[
         'pycryptoprosdk',
         'pycryptoprosdk.libcurl',
