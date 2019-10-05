@@ -9,6 +9,7 @@
 #include <cades.h>
 
 #define MY_ENCODING_TYPE (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
+#define CERT_NAME_STR_TYPE (CERT_X500_NAME_STR | CERT_NAME_STR_CRLF_FLAG)
 
 // start helpers -------------------------------------------------------------------------------------------------------
 
@@ -58,10 +59,10 @@ PyObject * FileTimeToPyDateTime(FILETIME *fileTime) {
 }
 
 PyObject * GetCertName(CERT_NAME_BLOB name) {
-    DWORD cbSize = CertNameToStr(MY_ENCODING_TYPE, &name, CERT_X500_NAME_STR, NULL, 0);
+    DWORD cbSize = CertNameToStr(MY_ENCODING_TYPE, &name, CERT_NAME_STR_TYPE, NULL, 0);
     char subject[cbSize];
 
-    CertNameToStr(MY_ENCODING_TYPE, &name, CERT_X500_NAME_STR, subject, cbSize);
+    CertNameToStr(MY_ENCODING_TYPE, &name, CERT_NAME_STR_TYPE, subject, cbSize);
 
     return PyUnicode_FromString(subject);
 }
@@ -128,10 +129,10 @@ PyObject * GetCertAltName(PCCERT_CONTEXT pCertContext) {
             if (entry.dwAltNameChoice == CERT_ALT_NAME_DIRECTORY_NAME) {
                 directoryName = entry._empty_union_.DirectoryName;
 
-                DWORD cbSize = CertNameToStr(X509_ASN_ENCODING, &directoryName, CERT_X500_NAME_STR, NULL, 0);
+                DWORD cbSize = CertNameToStr(X509_ASN_ENCODING, &directoryName, CERT_NAME_STR_TYPE, NULL, 0);
 
                 char certAltName[cbSize];
-                CertNameToStr(X509_ASN_ENCODING, &directoryName, CERT_X500_NAME_STR, certAltName, cbSize);
+                CertNameToStr(X509_ASN_ENCODING, &directoryName, CERT_NAME_STR_TYPE, certAltName, cbSize);
 
                 LocalFree(pvStructInfo);
 

@@ -1,4 +1,3 @@
-import re
 from base64 import b64decode
 from pycryptoprosdk import libpycades
 
@@ -124,7 +123,7 @@ class CertName:
 
     def as_dict(self):
         data = {}
-        for item in re.compile(r',(?<!^)\s+(?=[A-Z])(?!.\s)').split(self.cert_name):
+        for item in self.cert_name.split('\r\n'):
             try:
                 k, v = item.split('=')
                 data[k] = v

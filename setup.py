@@ -33,7 +33,6 @@ setup(
     version='1.0.0',
     packages=[
         'pycryptoprosdk',
-        'pycryptoprosdk.libcurl',
     ],
     ext_modules=[
         libpycades,
