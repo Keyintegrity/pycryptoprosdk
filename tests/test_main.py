@@ -47,24 +47,11 @@ class TestCryptoProSDK(unittest.TestCase):
 
         self.assertEqual(
             cert.issuer.as_string(),
-            '\r\n'.join([
-                'E=support@cryptopro.ru',
-                'C=RU',
-                'L=Moscow',
-                'O=CRYPTO-PRO LLC',
-                'CN=CRYPTO-PRO Test Center 2'
-            ])
+            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
         self.assertEqual(
             cert.subject.as_string(),
-            '\r\n'.join([
-                'CN=pycryptoprosdk',
-                'INN=123456789047',
-                'OGRN=1123300000053',
-                'SNILS=12345678901',
-                'STREET="Улица, дом"',
-                'L=Город'
-            ])
+            'CN=pycryptoprosdk, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
         )
         subject_dict = cert.subject.as_dict()
         self.assertEqual(subject_dict['CN'], 'pycryptoprosdk')
@@ -134,23 +121,11 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertIsNotNone(cert)
         self.assertEqual(
             cert.subject.as_string(),
-            '\r\n'.join([
-                'E=support@cryptopro.ru',
-                'C=RU',
-                'L=Moscow',
-                'O=CRYPTO-PRO LLC',
-                'CN=CRYPTO-PRO Test Center 2'
-            ])
+            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
         self.assertEqual(
             cert.issuer.as_string(),
-            '\r\n'.join([
-                'E=support@cryptopro.ru',
-                'C=RU',
-                'L=Moscow',
-                'O=CRYPTO-PRO LLC',
-                'CN=CRYPTO-PRO Test Center 2'
-            ])
+            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
         self.assertEqual(
             cert.valid_from,
@@ -168,13 +143,7 @@ class TestCryptoProSDK(unittest.TestCase):
 
         self.assertEqual(
             cert.issuer.as_string(),
-            '\r\n'.join([
-                'E=support@cryptopro.ru',
-                'C=RU',
-                'L=Moscow',
-                'O=CRYPTO-PRO LLC',
-                'CN=CRYPTO-PRO Test Center 2'
-            ])
+            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
 
     def test_subject_data(self):
