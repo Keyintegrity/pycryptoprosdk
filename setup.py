@@ -1,4 +1,10 @@
 from distutils.core import setup, Extension
+from os import path
+
+
+d = path.abspath(path.dirname(__file__))
+with open(path.join(d, 'README.rst')) as f:
+    long_description = f.read()
 
 
 libpycades = Extension(
@@ -22,11 +28,11 @@ libpycades = Extension(
 
 setup(
     name='pycryptoprosdk',
-    version='0.1.4',
+    version='0.1.5',
     url='https://github.com/Keyintegrity/pycryptoprosdk',
     author='uishnik',
     author_email='uishnik@yandex.ru',
-    long_description=open('./README.rst').read(),
+    long_description=long_description,
     packages=[
         'pycryptoprosdk',
         'pycryptoprosdk.libcurl',
