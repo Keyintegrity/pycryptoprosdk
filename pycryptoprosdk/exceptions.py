@@ -1,3 +1,3 @@
 from pycryptoprosdk.libpycades import (
-    CertDoesNotExists,
+    CertDoesNotExist,
 )

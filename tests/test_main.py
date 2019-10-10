@@ -7,6 +7,7 @@ from datetime import datetime
 from pycryptoprosdk import CryptoProSDK
 from pycryptoprosdk import Subject, CertName
 from pycryptoprosdk.error_codes import CRYPT_E_INVALID_MSG_TYPE
+from pycryptoprosdk.libpycades import CertDoesNotExist
 
 files_dir = os.path.join(os.path.dirname(__file__), 'files')
 
@@ -156,7 +157,7 @@ class TestCryptoProSDK(unittest.TestCase):
         store = 'MY'
         thumbprint = '9e78a331020e528c046ffd57704a21b7d2241cb3'
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(CertDoesNotExist) as context:
             self.sdk.get_cert_by_thumbprint(store, thumbprint)
         self.assertTrue('Could not find the desired certificate.' in str(context.exception))
 
@@ -167,7 +168,7 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertIsNotNone(cert)
         self.sdk.delete_certificate(store, thumbprint)
 
-        with self.assertRaises(Exception) as context:
+        with self.assertRaises(CertDoesNotExist) as context:
             cert = self.sdk.get_cert_by_thumbprint(store, thumbprint)
         self.assertTrue('Could not find the desired certificate.' in str(context.exception))
 
