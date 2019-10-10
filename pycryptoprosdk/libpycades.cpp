@@ -11,6 +11,23 @@
 #define MY_ENCODING_TYPE (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 #define CERT_NAME_STR_TYPE (CERT_X500_NAME_STR | CERT_NAME_STR_CRLF_FLAG)
 
+
+class BaseError : public std::exception {
+    public:
+        BaseError(std::string msg) : _msg{msg} {}
+        virtual const char* what() const noexcept { return _msg.c_str(); }
+    private:
+        const std::string _msg;
+};
+
+
+class CertDoesNotExists : public BaseError {
+    public:
+        CertDoesNotExists(std::string msg) : BaseError{msg} {}
+};
+
+static PyObject* CertDoesNotExists;
+
 // start helpers -------------------------------------------------------------------------------------------------------
 
 ALG_ID GetAlgId(const char *algString) {
@@ -237,7 +254,7 @@ static PyObject * GetCertBySubject(PyObject *self, PyObject *args) {
     pCertContext = CertFindCertificateInStore(hStoreHandle, MY_ENCODING_TYPE, 0, CERT_FIND_SUBJECT_STR, subject, NULL);
 
     if (!pCertContext) {
-        PyErr_SetString(PyExc_Exception, "Could not find the desired certificate.");
+        PyErr_SetString(CertDoesNotExists, "Could not find the desired certificate.");
         return NULL;
     }
 
@@ -276,7 +293,7 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args) {
 
     if (!pCertContext) {
         CertCloseStore(hStoreHandle, CERT_CLOSE_STORE_CHECK_FLAG);
-        PyErr_SetString(PyExc_Exception, "Could not find the desired certificate.");
+        PyErr_SetString(CertDoesNotExists, "Could not find the desired certificate.");
         return NULL;
     }
 
@@ -418,7 +435,7 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args) {
     pCertContext = CertFindCertificateInStore(hStore, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
 
     if (!pCertContext) {
-        PyErr_SetString(PyExc_Exception, "Could not find the desired certificate.");
+        PyErr_SetString(CertDoesNotExists, "Could not find the desired certificate.");
         return NULL;
     };
 
@@ -662,5 +679,10 @@ PyMODINIT_FUNC PyInit_libpycades(void)
 {
     PyObject *m;
     m = PyModule_Create(&libpycades);
+
+    CertDoesNotExists = PyErr_NewException("libpycades.CertDoesNotExists", NULL, NULL);
+    Py_INCREF(CertDoesNotExists);
+    PyModule_AddObject(m, "CertDoesNotExists", CertDoesNotExists);
+
     return m;
 }
