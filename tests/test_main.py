@@ -118,7 +118,7 @@ class TestCryptoProSDK(unittest.TestCase):
         )
 
     def test_get_cert_by_thumbprint(self):
-        cert = self.sdk.get_cert_by_thumbprint('ROOT', '046255290b0eb1cdd1797d9ab8c81f699e3687f3')
+        cert = self.sdk.get_cert_by_thumbprint('ROOT', 'cd321b87fdabb503829f88db68d893b59a7c5dd3')
         self.assertIsNotNone(cert)
         self.assertEqual(
             cert.subject.as_string(),
@@ -130,13 +130,13 @@ class TestCryptoProSDK(unittest.TestCase):
         )
         self.assertEqual(
             cert.valid_from,
-            datetime(2014, 8, 5, 13, 44, 24)
+            datetime(2019, 5, 27, 7, 24, 26)
         )
         self.assertEqual(
             cert.valid_to,
-            datetime(2019, 8, 5, 13, 54, 3)
+            datetime(2024, 5, 26, 7, 34, 5)
         )
-        self.assertEqual(cert.thumbprint.lower(), '046255290b0eb1cdd1797d9ab8c81f699e3687f3')
+        self.assertEqual(cert.thumbprint.lower(), 'cd321b87fdabb503829f88db68d893b59a7c5dd3')
 
     def test_get_cert_by_subject(self):
         cert = self.sdk.get_cert_by_subject('ROOT', 'CRYPTO-PRO Test Center 2')
@@ -148,7 +148,7 @@ class TestCryptoProSDK(unittest.TestCase):
         )
 
     def test_subject_data(self):
-        cert = self.sdk.get_cert_by_thumbprint('ROOT', '046255290b0eb1cdd1797d9ab8c81f699e3687f3')
+        cert = self.sdk.get_cert_by_thumbprint('ROOT', 'cd321b87fdabb503829f88db68d893b59a7c5dd3')
         subject_data = cert.subject.as_dict()
         self.assertIn('CN', subject_data)
         self.assertEqual(subject_data['CN'], 'CRYPTO-PRO Test Center 2')

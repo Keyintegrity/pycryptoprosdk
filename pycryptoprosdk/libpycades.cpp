@@ -59,6 +59,24 @@ char * GetHashOidByKeyOid(IN char *szKeyOid) {
     return NULL;
 }
 
+HCERTSTORE OpenStore(const char *storeName, int storeType) {
+    HCERTSTORE hStore;
+    DWORD dwFlags;
+
+    if (storeType == 0) {
+        dwFlags = CERT_SYSTEM_STORE_CURRENT_USER;
+    } else {
+        dwFlags = CERT_SYSTEM_STORE_LOCAL_MACHINE;
+    }
+
+    hStore = CertOpenStore(CERT_STORE_PROV_SYSTEM, 0, NULL, dwFlags, Py_DecodeLocale(storeName, NULL));
+    if (!hStore) {
+        PyErr_SetString(PyExc_Exception, "OpenStore failed.");
+        return NULL;
+    }
+    return hStore;
+}
+
 PyObject * FileTimeToPyDateTime(FILETIME *fileTime) {
     PyDateTime_IMPORT;
     SYSTEMTIME systemTime;
@@ -243,15 +261,20 @@ static PyObject * CreateHash(PyObject *self, PyObject *args) {
 static PyObject * GetCertBySubject(PyObject *self, PyObject *args) {
     const char *storeName;
     const char *subject;
+    int storeType;
 
-    if (!PyArg_ParseTuple(args, "ss", &storeName, &subject))
+    if (!PyArg_ParseTuple(args, "ssi", &storeName, &subject, &storeType))
         return NULL;
 
-    HCERTSTORE hStoreHandle;
+    HCERTSTORE hStore;
     PCCERT_CONTEXT pCertContext = NULL;
 
-    hStoreHandle = CertOpenSystemStore(0, storeName);
-    pCertContext = CertFindCertificateInStore(hStoreHandle, MY_ENCODING_TYPE, 0, CERT_FIND_SUBJECT_STR, subject, NULL);
+    hStore = OpenStore(storeName, storeType);
+    if (!hStore) {
+        return NULL;
+    }
+
+    pCertContext = CertFindCertificateInStore(hStore, MY_ENCODING_TYPE, 0, CERT_FIND_SUBJECT_STR, subject, NULL);
 
     if (!pCertContext) {
         PyErr_SetString(CertDoesNotExist, "Could not find the desired certificate.");
@@ -261,7 +284,7 @@ static PyObject * GetCertBySubject(PyObject *self, PyObject *args) {
     PyObject * certInfo = GetCertInfo(pCertContext);
 
     CertFreeCertificateContext(pCertContext);
-    CertCloseStore(hStoreHandle, CERT_CLOSE_STORE_CHECK_FLAG);
+    CertCloseStore(hStore, CERT_CLOSE_STORE_CHECK_FLAG);
 
     return certInfo;
 }
@@ -269,11 +292,12 @@ static PyObject * GetCertBySubject(PyObject *self, PyObject *args) {
 static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args) {
     const char *storeName;
     const char *thumbprint;
+    int storeType;
 
-    if (!PyArg_ParseTuple(args, "ss", &storeName, &thumbprint))
+    if (!PyArg_ParseTuple(args, "ssi", &storeName, &thumbprint, &storeType))
         return NULL;
 
-    HCERTSTORE hStoreHandle;
+    HCERTSTORE hStore;
     PCCERT_CONTEXT pCertContext = NULL;
 
     BYTE pDest[20];
@@ -288,11 +312,15 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args) {
     para.pbData = pDest;
     para.cbData = nOutLen;
 
-    hStoreHandle = CertOpenSystemStore(0, storeName);
-    pCertContext = CertFindCertificateInStore(hStoreHandle, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
+    hStore = OpenStore(storeName, storeType);
+    if (!hStore) {
+        return NULL;
+    }
+
+    pCertContext = CertFindCertificateInStore(hStore, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
 
     if (!pCertContext) {
-        CertCloseStore(hStoreHandle, CERT_CLOSE_STORE_CHECK_FLAG);
+        CertCloseStore(hStore, CERT_CLOSE_STORE_CHECK_FLAG);
         PyErr_SetString(CertDoesNotExist, "Could not find the desired certificate.");
         return NULL;
     }
@@ -300,7 +328,7 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args) {
     PyObject * certInfo = GetCertInfo(pCertContext);
 
     CertFreeCertificateContext(pCertContext);
-    CertCloseStore(hStoreHandle, CERT_CLOSE_STORE_CHECK_FLAG);
+    CertCloseStore(hStore, CERT_CLOSE_STORE_CHECK_FLAG);
 
     return certInfo;
 }
@@ -375,8 +403,9 @@ static PyObject * InstallCertificate(PyObject *self, PyObject *args) {
     const char *storeName;
     const char *certData;
     Py_ssize_t certDataLength;
+    int storeType;
 
-    if (!PyArg_ParseTuple(args, "sy#", &storeName, &certData, &certDataLength))
+    if (!PyArg_ParseTuple(args, "sy#i", &storeName, &certData, &certDataLength, &storeType))
         return NULL;
 
     BYTE *pDecodedCertData = (BYTE*)certData;
@@ -389,14 +418,14 @@ static PyObject * InstallCertificate(PyObject *self, PyObject *args) {
     }
 
     HCERTSTORE hStore;
-    hStore = CertOpenSystemStore(0, storeName);
+
+    hStore = OpenStore(storeName, storeType);
     if (!hStore) {
-        PyErr_SetString(PyExc_Exception, "CertOpenSystemStore failed.");
         return NULL;
     }
 
     if (!CertAddCertificateContextToStore(hStore, pCertContext, CERT_STORE_ADD_USE_EXISTING, NULL)) {
-        PyErr_SetString(PyExc_Exception, "CertAddCertificateContextToStore failed.");
+        PyErr_Format(PyExc_ValueError, "CertAddCertificateContextToStore failed (error 0x%x).", GetLastError());
         return NULL;
     }
 
@@ -411,8 +440,9 @@ static PyObject * InstallCertificate(PyObject *self, PyObject *args) {
 static PyObject * DeleteCertificate(PyObject *self, PyObject *args) {
     const char *storeName;
     const char *thumbprint;
+    int storeType;
 
-    if (!PyArg_ParseTuple(args, "ss", &storeName, &thumbprint))
+    if (!PyArg_ParseTuple(args, "ssi", &storeName, &thumbprint, &storeType))
         return NULL;
 
     HCERTSTORE hStore;
@@ -430,7 +460,10 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args) {
     para.pbData = pDest;
     para.cbData = nOutLen;
 
-    hStore = CertOpenSystemStore(0, storeName);
+    hStore = OpenStore(storeName, storeType);
+    if (!hStore) {
+        return NULL;
+    }
 
     pCertContext = CertFindCertificateInStore(hStore, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
 
@@ -440,7 +473,7 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args) {
     };
 
     if (!CertDeleteCertificateFromStore(pCertContext)){
-        PyErr_SetString(PyExc_Exception, "CertDeleteCertificateFromStore failed.");
+        PyErr_Format(PyExc_ValueError, "CertDeleteCertificateFromStore failed (error 0x%x).", GetLastError());
         return NULL;
     }
 
