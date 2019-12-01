@@ -1,11 +1,13 @@
 import os
 import unittest
+
 from base64 import b64encode
 from datetime import datetime
 
 from pycryptoprosdk import CryptoProSDK
 from pycryptoprosdk import Subject, CertName
 from pycryptoprosdk.error_codes import CRYPT_E_INVALID_MSG_TYPE
+from pycryptoprosdk.libpycades import CertDoesNotExist
 
 files_dir = os.path.join(os.path.dirname(__file__), 'files')
 
@@ -14,32 +16,78 @@ class TestCryptoProSDK(unittest.TestCase):
     def setUp(self):
         self.sdk = CryptoProSDK()
 
-    def _get_content(self, file_name):
-        with open(file_name, 'rb') as f:
+    def _get_content(self, file_name, mode='rb'):
+        with open(file_name, mode) as f:
             return f.read()
 
-    def _get_content_b64(self, filename):
-        return b64encode(self._get_content(filename))
+    def _get_content_b64(self, filename, mode='rb'):
+        return b64encode(self._get_content(filename, mode))
 
-    def test_verify_detached(self):
-        content = self._get_content_b64(os.path.join(files_dir, 'signatures', 'doc.txt'))
-        signature = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
-
-        res = self.sdk.verify_detached(content, signature)
+    def test_sign_and_verify(self):
+        cert = self.sdk.get_cert_by_subject('MY', 'pycryptoprosdk')
+        message = 'qwerty'
+        signature = self.sdk.sign(message, cert.thumbprint, 'MY')
+        res = self.sdk.verify(signature)
         self.assertEqual(res.verification_status, 0)
         self.assertIsNotNone(res.cert)
+        self.assertEqual(res.message, message.encode('utf-8'))
 
-    def test_bad_signature(self):
-        content = self._get_content_b64(os.path.join(files_dir, 'signatures', 'doc.txt'))
+    def test_sign_and_verify_detached(self):
+        content = b'test content'
+        cert = self.sdk.get_cert_by_subject('MY', 'pycryptoprosdk')
+        signature = self.sdk.sign(content, cert.thumbprint, 'MY', detached=True)
 
-        res = self.sdk.verify_detached(content, 'signature')
+        res = self.sdk.verify_detached(content, signature)
+
+        self.assertEqual(0, res.verification_status)
+        self.assertIsNotNone(res.cert)
+
+        cert = self.sdk.get_signer_cert_from_signature(signature)
+
+        self.assertIsNone(cert.alt_name)
+
+        self.assertEqual(
+            cert.issuer.as_string(),
+            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
+        )
+        self.assertEqual(
+            cert.subject.as_string(),
+            'CN=pycryptoprosdk, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
+        )
+        subject_dict = cert.subject.as_dict()
+        self.assertEqual(subject_dict['CN'], 'pycryptoprosdk')
+        self.assertEqual(subject_dict['INN'], '123456789047')
+        self.assertEqual(subject_dict['OGRN'], '1123300000053')
+        self.assertEqual(subject_dict['SNILS'], '12345678901')
+        self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
+        self.assertEqual(subject_dict['L'], 'Город')
+
+        self.assertEqual(cert.subject.personal_info, subject_dict)
+        self.assertEqual(cert.subject.cn, 'pycryptoprosdk')
+        self.assertEqual(cert.subject.inn, '123456789047')
+        self.assertEqual(cert.subject.snils, '12345678901')
+        self.assertEqual(cert.subject.street, '"Улица, дом"')
+        self.assertEqual(cert.subject.city, 'Город')
+
+    def test_bad_signature_verify_detached(self):
+        content = '12345'
+
+        res = self.sdk.verify_detached(content, b64encode(b'signature'))
 
         self.assertEqual(res.verification_status, -1)
         self.assertIsNone(res.cert)
-        self.assertEqual(res.error, CRYPT_E_INVALID_MSG_TYPE)
+        self.assertEqual(CRYPT_E_INVALID_MSG_TYPE, res.error)
+
+    def test_bad_signature_verify(self):
+        res = self.sdk.verify(b64encode(b'signature'))
+
+        self.assertEqual(res.verification_status, -1)
+        self.assertIsNone(res.cert)
+        self.assertIsNone(res.message)
+        self.assertEqual(CRYPT_E_INVALID_MSG_TYPE, res.error)
 
     def test_hash_CALG_GR3411(self):
-        content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt'))
+        content = 'Данные для подписи\n'
 
         self.assertEqual(
             self.sdk.create_hash(content, 'CALG_GR3411'),
@@ -54,7 +102,7 @@ class TestCryptoProSDK(unittest.TestCase):
         )
 
     def test_hash_CALG_GR3411_2012_256(self):
-        content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt'))
+        content = 'Данные для подписи\n'
 
         self.assertEqual(
             self.sdk.create_hash(content, 'CALG_GR3411_2012_256'),
@@ -62,7 +110,7 @@ class TestCryptoProSDK(unittest.TestCase):
         )
 
     def test_hash_CALG_GR3411_2012_512(self):
-        content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt'))
+        content = 'Данные для подписи\n'
 
         self.assertEqual(
             self.sdk.create_hash(content, 'CALG_GR3411_2012_512'),
@@ -94,8 +142,10 @@ class TestCryptoProSDK(unittest.TestCase):
         cert = self.sdk.get_cert_by_subject('ROOT', 'CRYPTO-PRO Test Center 2')
         self.assertIsNotNone(cert)
 
-        cert = self.sdk.get_cert_by_subject('ROOT', 'support@cryptopro.ru')
-        self.assertIsNotNone(cert)
+        self.assertEqual(
+            cert.issuer.as_string(),
+            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
+        )
 
     def test_subject_data(self):
         cert = self.sdk.get_cert_by_thumbprint('ROOT', '046255290b0eb1cdd1797d9ab8c81f699e3687f3')
@@ -104,48 +154,45 @@ class TestCryptoProSDK(unittest.TestCase):
         self.assertEqual(subject_data['CN'], 'CRYPTO-PRO Test Center 2')
 
     def test_install_and_delete_certificate(self):
+        store = 'MY'
+        thumbprint = '9e78a331020e528c046ffd57704a21b7d2241cb3'
+
+        with self.assertRaises(CertDoesNotExist) as context:
+            self.sdk.get_cert_by_thumbprint(store, thumbprint)
+        self.assertTrue('Could not find the desired certificate.' in str(context.exception))
+
         cert_str = self._get_content_b64(os.path.join(files_dir, 'certs', 'uc_1_is_guc.cer'))
+        self.sdk.install_certificate('MY', cert_str.decode('utf-8'))
 
-        self.sdk.install_certificate('CA', cert_str.decode('utf-8'))
-
-        cert = self.sdk.get_cert_by_thumbprint('CA', '9e78a331020e528c046ffd57704a21b7d2241cb3')
+        cert = self.sdk.get_cert_by_thumbprint(store, thumbprint)
         self.assertIsNotNone(cert)
-        self.assertTrue(self.sdk.delete_certificate('CA', '9e78a331020e528c046ffd57704a21b7d2241cb3'))
+        self.sdk.delete_certificate(store, thumbprint)
 
-    def test_get_signer_certificate_from_signature(self):
-        signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'doc.txt.sgn'))
-        cert = self.sdk.get_signer_cert_from_signature(signature_content)
-
-        self.assertDictEqual(cert.alt_name.as_dict(), {})
-
-        self.assertEqual(
-            cert.issuer.as_string(),
-            'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
-        )
-        self.assertEqual(
-            cert.subject.as_string(),
-            'CN=Иванов Иван Иванович, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
-        )
-        subject_dict = cert.subject.as_dict()
-        self.assertEqual(subject_dict['CN'], 'Иванов Иван Иванович')
-        self.assertEqual(subject_dict['INN'], '123456789047')
-        self.assertEqual(subject_dict['OGRN'], '1123300000053')
-        self.assertEqual(subject_dict['SNILS'], '12345678901')
-        self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
-        self.assertEqual(subject_dict['L'], 'Город')
-
-        self.assertEqual(cert.subject.personal_info, subject_dict)
-        self.assertEqual(cert.subject.cn, 'Иванов Иван Иванович')
-        self.assertEqual(cert.subject.inn, '123456789047')
-        self.assertEqual(cert.subject.snils, '12345678901')
-        self.assertEqual(cert.subject.street, '"Улица, дом"')
-        self.assertEqual(cert.subject.city, 'Город')
+        with self.assertRaises(CertDoesNotExist) as context:
+            cert = self.sdk.get_cert_by_thumbprint(store, thumbprint)
+        self.assertTrue('Could not find the desired certificate.' in str(context.exception))
 
     def test_inn_original(self):
         subject_string = '\r\n'.join(['INN=003456789047'])
         subject = Subject(subject_string)
         self.assertEqual(subject.inn_original, '003456789047')
         self.assertEqual(subject.inn, '3456789047')
+
+    def test_sign_file_content(self):
+        content = self._get_content(os.path.join(files_dir, 'img.png'))
+        cert = self.sdk.get_cert_by_subject('MY', 'pycryptoprosdk')
+        signature = self.sdk.sign(content, cert.thumbprint, 'MY', detached=False)
+        self.assertTrue(len(signature) > 0)
+
+    def test_sign_message_as_string(self):
+        cert = self.sdk.get_cert_by_subject('MY', 'pycryptoprosdk')
+        signature = self.sdk.sign('qwerty', cert.thumbprint, 'MY', detached=False)
+        self.assertTrue(len(signature) > 0)
+
+    def test_sign_message_as_binary(self):
+        cert = self.sdk.get_cert_by_subject('MY', 'pycryptoprosdk')
+        signature = self.sdk.sign(b'qwerty', cert.thumbprint, 'MY', detached=False)
+        self.assertTrue(len(signature) > 0)
 
     # def test_get_signer_alt_name_from_signature(self):
     #     signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'test_alt_name.txt.sig'))

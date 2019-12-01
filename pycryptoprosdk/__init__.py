@@ -1,28 +1,111 @@
-import ctypes
-import os
-import re
-
-from distutils.sysconfig import get_config_var
-from pycryptoprosdk.utils import str_to_date
+from base64 import b64decode
+from pycryptoprosdk import libpycades
 
 
-class _CertInfo(ctypes.Structure):
-    _fields_ = [
-        ('subject', ctypes.c_char * 1024),
-        ('issuer', ctypes.c_char * 1024),
-        ('notValidBefore', ctypes.c_char * 19),
-        ('notValidAfter', ctypes.c_char * 19),
-        ('thumbprint', ctypes.c_char * 41),
-        ('altName', ctypes.c_char * 1024),
-    ]
+class CryptoProSDK:
+    def sign(self, message, thumbprint, store='MY', detached=False):
+        """Создает подпись.
 
+        :param message: подписываемое сообщение
+        :param thumbprint: отпечаток сертификата, которым производится подписание
+        :param store: хранилище сертификата, которым производится подписание
+        :param detached: создавать отсоединенную подпись
+        :return: подпись в base64
+        """
+        message = self._prepare_message(message)
+        return libpycades.sign(message, thumbprint, store, detached)
 
-class _VerificationInfo(ctypes.Structure):
-    _fields_ = [
-        ('verificationStatus', ctypes.c_int),
-        ('error', ctypes.c_char * 1024),
-        ('certInfo', _CertInfo)
-    ]
+    def verify(self, signature):
+        """Верифицирует присоединенную подпись.
+
+        :param signature: контент подписи, закодированный в base64
+        :return: VerificationInfo
+        """
+        signature = self._prepare_message(signature, decode_b64=True)
+        res = libpycades.verify(signature)
+        return VerificationInfo(res)
+
+    def verify_detached(self, message, signature):
+        """Верифицирует отсоединенную подпись.
+
+        :param message: сообщение, для которого проверяется подпись
+        :param signature: контент подписи, закодированный в base64
+        :return: объект VerificationInfoDetached
+        """
+        message = self._prepare_message(message)
+        signature = self._prepare_message(signature, decode_b64=True)
+        res = libpycades.verify_detached(message, signature)
+        return VerificationInfoDetached(res)
+
+    def create_hash(self, message, alg):
+        """Вычисляет хэш сообщения по ГОСТу.
+
+        :param message: сообщение
+        :param alg: алгоритм хэширования.
+            Возможные значения: 'CALG_GR3411', 'CALG_GR3411_2012_256', 'CALG_GR3411_2012_512'
+        :return: хэш-значение
+        """
+        available_alg = (
+            'CALG_GR3411',
+            'CALG_GR3411_2012_256',
+            'CALG_GR3411_2012_512',
+        )
+        if alg not in available_alg:
+            raise ValueError('Unexpected algorithm \'{}\''.format(alg))
+
+        return libpycades.create_hash(self._prepare_message(message), alg)
+
+    def get_cert_by_subject(self, store, subject):
+        """Возвращает сертификат по subject.
+
+        :param store: имя хранилища сертификатов
+        :param subject: subject сертификата
+        :return: объект CertInfo
+        """
+        return CertInfo(libpycades.get_cert_by_subject(store, subject))
+
+    def get_cert_by_thumbprint(self, store, thumbprint):
+        """Получает сертификат по отпечатку.
+
+        :param store: имя хранилища сертификатов
+        :param thumbprint: отпечаток сертификата
+        :return: объект CertInfo
+        """
+        return CertInfo(libpycades.get_cert_by_thumbprint(store, thumbprint))
+
+    def install_certificate(self, store_name, cert_content):
+        """Устанавливает сертификат в хранилище сертификатов.
+
+        :param store_name: имя хранилища сертификатов
+        :param cert_content: контент сертификата, закодированный в base64
+        :return: объект CertInfo
+        """
+        cert_content = self._prepare_message(cert_content, decode_b64=True)
+        return libpycades.install_certificate(store_name, cert_content)
+
+    def delete_certificate(self, store_name, thumbprint):
+        """Удаляет сертификат из хранилища сертификатов.
+
+        :param store_name: имя хранилища сертификатов
+        :param thumbprint: отпечаток сертификата
+        """
+        libpycades.delete_certificate(store_name, thumbprint)
+
+    def get_signer_cert_from_signature(self, signature):
+        """Извлекает сертификат подписанта из подписи.
+
+        :param signature: контент подписи в base64
+        :return: объект CertInfo
+        """
+        signature = self._prepare_message(signature, decode_b64=True)
+        return CertInfo(libpycades.get_signer_cert_from_signature(signature))
+
+    def _prepare_message(self, message, decode_b64=False):
+        if isinstance(message, str):
+            message = message.encode('utf-8')
+        if decode_b64:
+            message = b64decode(message)
+        return message
 
 
 class CertName:
@@ -73,140 +156,41 @@ class Issuer(Subject):
 
 class CertInfo:
     def __init__(self, cert_info):
-        self.subject = Subject(cert_info.subject.decode('utf-8'))
-        self.issuer = Issuer(cert_info.issuer.decode('utf-8'))
-        self.valid_from = str_to_date(cert_info.notValidBefore.decode('utf-8'))
-        self.valid_to = str_to_date(cert_info.notValidAfter.decode('utf-8'))
-        self.thumbprint = cert_info.thumbprint.decode('utf-8')
-        self.alt_name = CertName(cert_info.altName.decode('utf-8', errors='ignore'))
+        self.cert_info = cert_info
+        self.subject = Subject(cert_info['subject'])
+        self.issuer = Issuer(cert_info['issuer'])
+        self.valid_from = cert_info['notValidBefore']
+        self.valid_to = cert_info['notValidAfter']
+        self.thumbprint = cert_info['thumbprint']
+
+        alt_name = cert_info['altName']
+        self.alt_name = CertName(alt_name) if alt_name else None
+
+    def as_dict(self):
+        return self.cert_info
 
 
-class VerificationInfo:
+class VerificationInfoDetached:
     def __init__(self, verification_info):
         self._verification_info = verification_info
 
-        self.verification_status = self._verification_info.verificationStatus
+        self.verification_status = self._verification_info['verificationStatus']
         self.cert = self._get_cert()
-        self.error = self._verification_info.error.decode('utf-8')
+        self.error = self._verification_info['error']
 
     def _get_cert(self):
         if self.verification_status == -1:
             return
-        return CertInfo(self._verification_info.certInfo)
+        return CertInfo(self._verification_info['certInfo'])
 
 
-class CryptoProSDK:
-    def __init__(self):
-        suffix = get_config_var('EXT_SUFFIX') or ''
+class VerificationInfo(VerificationInfoDetached):
+    def __init__(self, verification_info):
+        super(VerificationInfo, self).__init__(verification_info)
+        message = self._verification_info['message']
+        self.message = b64decode(message) if message else None
 
-        dirname = os.path.dirname(os.path.realpath(__file__))
-        self.lib = ctypes.CDLL(os.path.join(dirname, 'libpycades{}{}'.format(suffix, '.so' if not suffix else '')))
-
-        self._verify_detached = self.lib.VerifyDetached
-        self._verify_detached.restype = _VerificationInfo
-
-        self._create_hash = self.lib.CreateHash
-        self._create_hash.restype = ctypes.c_bool
-
-        self._get_cert_by_subject = self.lib.GetCertBySubject
-        self._get_cert_by_subject.restype = ctypes.c_bool
-
-        self._get_cert_by_thumbprint = self.lib.GetCertByThumbprint
-        self._get_cert_by_thumbprint.restype = ctypes.c_bool
-
-        self._install_certificate = self.lib.InstallCertificate
-        self._install_certificate.restype = ctypes.c_bool
-
-        self._delete_certificate = self.lib.DeleteCertificate
-        self._delete_certificate.restype = ctypes.c_bool
-
-        self._get_issuer_cert_from_signature = self.lib.GetSignerCertFromSignature
-        self._get_issuer_cert_from_signature.restype = ctypes.c_bool
-
-    def verify_detached(self, file_content, signature_content):
-        """
-        Верифицирует отсоединенную подпись
-        :param file_content: контент файла, закодированный в base64
-        :param signature_content: контент подписи, закодированный в base64
-        :return: структура VerificationInfo
-        """
-        res = self._verify_detached(file_content, signature_content)
-        return VerificationInfo(res)
-
-    def create_hash(self, content, alg):
-        """
-        Вычисляет хэш сообщения по ГОСТу
-        :param content: сообщение
-        :param alg: алгоритм хэширования.
-            Возможные значения: 'CALG_GR3411', 'CALG_GR3411_2012_256', 'CALG_GR3411_2012_512'
-        :return: хэш-значение
-        """
-        available_alg = (
-            'CALG_GR3411',
-            'CALG_GR3411_2012_256',
-            'CALG_GR3411_2012_512',
-        )
-        if alg not in available_alg:
-            raise ValueError('Unexpected algorithm \'{}\''.format(alg))
-
-        res_length = 64
-        if alg == 'CALG_GR3411_2012_512':
-            res_length = 128
-
-        h = (ctypes.c_char*res_length)()
-        res = self._create_hash(content, len(content), alg.encode('utf-8'), ctypes.byref(h))
-        if res:
-            return h.value.upper().decode('utf-8')
-
-    def get_cert_by_subject(self, store, subject):
-        """
-        Возвращает сертификат по subject
-        :param store: имя хранилища сертификатов
-        :param subject: subject сертификата
-        :return: объект CertInfo
-        """
-        cert_info = _CertInfo()
-        res = self._get_cert_by_subject(store.encode('utf-8'), subject.encode('utf-8'), ctypes.byref(cert_info))
-        if res:
-            return CertInfo(cert_info)
-
-    def get_cert_by_thumbprint(self, store, thumbprint):
-        """
-        Получает сертификат по отпечатку
-        :param store: имя хранилища сертификатов
-        :param thumbprint: отпечаток сертификата
-        :return: объект CertInfo
-        """
-        cert_info = _CertInfo()
-        res = self._get_cert_by_thumbprint(store.encode('utf-8'), thumbprint.encode('utf-8'), ctypes.byref(cert_info))
-        if res:
-            return CertInfo(cert_info)
-
-    def install_certificate(self, store_name, cert_content):
-        """
-        Устанавливает сертификат в хранилище сертификатов
-        :param store_name: имя хранилища сертификатов
-        :param cert_content: контент сертификата, закодированный в base64
-        :return: True в случае успеха, False в случае неудачи
-        """
-        return self._install_certificate(store_name.encode('utf-8'), cert_content.encode('utf-8'))
-
-    def delete_certificate(self, store_name, thumbprint):
-        """
-        Удаляет сертификат из хранилища сертификатов
-        :param store_name: имя хранилища сертификатов
-        :param thumbprint: отпечаток сертификата
-        :return: True в случае успеха, False в случае неудачи
-        """
-        return self._delete_certificate(store_name.encode('utf-8'), thumbprint.encode('utf-8'))
-
-    def get_signer_cert_from_signature(self, signature_content):
-        """
-        Извлекает сертификат подписанта из подписи
-        :param signature_content: контент подписи,  в base64
-        :return: объект CertInfo
-        """
-        cert_info = _CertInfo()
-        res = self._get_issuer_cert_from_signature(signature_content, ctypes.byref(cert_info))
-        if res:
-            return CertInfo(cert_info)
+    def _get_cert(self):
+        if self.verification_status == -1:
+            return
+        return CertInfo(self._verification_info['certInfo'])
