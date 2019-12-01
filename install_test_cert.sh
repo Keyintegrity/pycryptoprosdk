@@ -14,5 +14,4 @@ install_cert(){
         -sg -ku -du -ca http://cryptopro.ru/certsrv
 }
 
-# обновление тестовой подписи
-install_cert "CN=${cn},INN=123456789047,OGRN=1123300000053,SNILS=12345678901,STREET=\"Улица, дом\",L=Город" 'doc.txt'
+install_cert "CN=${cn},INN=123456789047,OGRN=1123300000053,SNILS=12345678901,STREET=\"Улица, дом\",L=Город"
