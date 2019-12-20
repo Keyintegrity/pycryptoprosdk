@@ -11,22 +11,7 @@
 #define MY_ENCODING_TYPE (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 #define CERT_NAME_STR_TYPE (CERT_X500_NAME_STR | CERT_NAME_STR_CRLF_FLAG)
 
-
-class BaseError : public std::exception {
-    public:
-        BaseError(std::string msg) : _msg{msg} {}
-        virtual const char* what() const noexcept { return _msg.c_str(); }
-    private:
-        const std::string _msg;
-};
-
-
-class CertDoesNotExist : public BaseError {
-    public:
-        CertDoesNotExist(std::string msg) : BaseError{msg} {}
-};
-
-static PyObject* CertDoesNotExist;
+static PyObject* CertDoesNotExist = NULL;
 
 // start helpers -------------------------------------------------------------------------------------------------------
 

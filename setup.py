@@ -36,7 +36,7 @@ libpycades = Extension(
 
 setup(
     name='pycryptoprosdk',
-    version='1.0.0-rc3',
+    version='1.0.0-rc4',
     url='https://github.com/Keyintegrity/pycryptoprosdk',
     author='uishnik',
     author_email='uishnik@yandex.ru',
