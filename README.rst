@@ -71,7 +71,7 @@ pycryptoprosdk
 
 
     # установка сертификата в хранилище MY:
-    >>> with open('certificate.cer'), 'rb') as f:
+    >>> with open('certificate.cer', 'rb') as f:
     >>>     cert_content = f.read()
     >>> sdk.install_certificate('MY', cert_content)
 
