@@ -1,4 +1,5 @@
 from distutils.core import setup, Extension
+from distutils.util import get_platform
 from os import path
 
 
@@ -33,6 +34,16 @@ libpycades = Extension(
     ]
 )
 
+if get_platform().startswith("macos"):
+    libpycades.extra_link_args=[
+        '-L/opt/cprocsp/lib/',
+        '-lcapi20',
+        '-lcapi10',
+        '-lrdrsup',
+        '-L/Applications/CryptoPro_ECP.app/Contents/MacOS/lib/',
+        '-lcades',
+        '-Wl,-rpath,/Applications/CryptoPro_ECP.app/Contents/MacOS/lib/',
+    ]
 
 setup(
     name='pycryptoprosdk',
