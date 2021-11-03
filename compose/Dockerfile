@@ -21,7 +21,6 @@ RUN ln -s /opt/cprocsp/lib/amd64/libcades.so.2.0.0 /opt/cprocsp/lib/amd64/libcad
 COPY ./compose/certs /certs
 RUN /opt/cprocsp/bin/amd64/certmgr -inst -store uroot -f /certs/cert_cryptopro_test.cer \
     && /opt/cprocsp/bin/amd64/certmgr -inst -store uroot -f /certs/guc.cer \
-    && /opt/cprocsp/bin/amd64/certmgr -inst -store uca -f /certs/kazna.cer \
     && /opt/cprocsp/sbin/amd64/cpconfig -ini '\config\Parameters' -add bool Rfc6125_NotStrict_ServerName_Check true
 
 COPY ./requirements.txt /requirements.txt
