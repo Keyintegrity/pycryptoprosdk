@@ -169,7 +169,7 @@ class TestCryptoProSDK(unittest.TestCase):
         self.sdk.delete_certificate(store, thumbprint)
 
         with self.assertRaises(CertDoesNotExist) as context:
-            cert = self.sdk.get_cert_by_thumbprint(store, thumbprint)
+            self.sdk.get_cert_by_thumbprint(store, thumbprint)
         self.assertTrue('Could not find the desired certificate.' in str(context.exception))
 
     def test_inn_original(self):
