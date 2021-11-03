@@ -55,41 +55,45 @@ class CryptoProSDK:
 
         return libpycades.create_hash(self._prepare_message(message), alg)
 
-    def get_cert_by_subject(self, store, subject):
+    def get_cert_by_subject(self, store, subject, store_type=0):
         """Возвращает сертификат по subject.
 
         :param store: имя хранилища сертификатов
         :param subject: subject сертификата
+        :param store_type: тип хранилища (0 - CURRENT_USER, 1 - LOCAL_MACHINE)
         :return: объект CertInfo
         """
-        return CertInfo(libpycades.get_cert_by_subject(store, subject))
+        return CertInfo(libpycades.get_cert_by_subject(store, subject, store_type))
 
-    def get_cert_by_thumbprint(self, store, thumbprint):
+    def get_cert_by_thumbprint(self, store, thumbprint, store_type=0):
         """Получает сертификат по отпечатку.
 
         :param store: имя хранилища сертификатов
         :param thumbprint: отпечаток сертификата
+        :param store_type: тип хранилища (0 - CURRENT_USER, 1 - LOCAL_MACHINE)
         :return: объект CertInfo
         """
-        return CertInfo(libpycades.get_cert_by_thumbprint(store, thumbprint))
+        return CertInfo(libpycades.get_cert_by_thumbprint(store, thumbprint, store_type))
 
-    def install_certificate(self, store_name, cert_content):
+    def install_certificate(self, store_name, cert_content, store_type=0):
         """Устанавливает сертификат в хранилище сертификатов.
 
         :param store_name: имя хранилища сертификатов
         :param cert_content: контент сертификата, закодированный в base64
+        :param store_type: тип хранилища (0 - CURRENT_USER, 1 - LOCAL_MACHINE)
         :return: объект CertInfo
         """
         cert_content = self._prepare_message(cert_content, decode_b64=True)
-        return libpycades.install_certificate(store_name, cert_content)
+        return libpycades.install_certificate(store_name, cert_content, store_type)
 
-    def delete_certificate(self, store_name, thumbprint):
+    def delete_certificate(self, store_name, thumbprint, store_type=0):
         """Удаляет сертификат из хранилища сертификатов.
 
         :param store_name: имя хранилища сертификатов
         :param thumbprint: отпечаток сертификата
+        :param store_type: тип хранилища (0 - CURRENT_USER, 1 - LOCAL_MACHINE)
         """
-        libpycades.delete_certificate(store_name, thumbprint)
+        libpycades.delete_certificate(store_name, thumbprint, store_type)
 
     def get_signer_cert_from_signature(self, signature):
         """Извлекает сертификат подписанта из подписи.

@@ -70,10 +70,15 @@ pycryptoprosdk
     >>> cert = sdk.get_cert_by_subject('MY', 'CRYPTO-PRO Test Center 2')
 
 
-    # установка сертификата в хранилище MY:
+    # установка сертификата в хранилище uMY:
     >>> with open('certificate.cer', 'rb') as f:
     >>>     cert_content = f.read()
     >>> sdk.install_certificate('MY', cert_content)
+
+    # установка сертификата в хранилище mMY:
+    >>> with open('certificate.cer'), 'rb') as f:
+    >>>     cert_content = f.read()
+    >>> sdk.install_certificate('MY', cert_content, store_type=1)
 
 
     # удаление сертификата из хранилища MY по отпечатку:
