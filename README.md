@@ -11,7 +11,7 @@ pycryptoprosdk
 $ ln -s /opt/cprocsp/lib/amd64/libcades.so.2.0.0 /opt/cprocsp/lib/amd64/libcades.so
 ```
 
-Пример установки пакетов можно посмотреть в `pycryptoprosdk/compose/Dockerfile <https://github.com/Keyintegrity/pycryptoprosdk/blob/master/compose/Dockerfile>`_.
+Пример установки пакетов можно посмотреть в [pycryptoprosdk/compose/Dockerfile](https://github.com/Keyintegrity/pycryptoprosdk/blob/master/compose/Dockerfile)
 
 * Установить pycryptoprosdk:
 ```shell
@@ -90,10 +90,10 @@ cert = sdk.get_signer_cert_from_signature(signature_content)
 
 Установить тестовый сертификат:
 ```shell
-# ./install_test_cert.sh
+$ ./install_test_cert.sh
 ```
 
 Запустить тесты:
 ```shell
-# python -m unittest
+$ python -m unittest
 ```
