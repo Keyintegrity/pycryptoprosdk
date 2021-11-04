@@ -3,7 +3,7 @@ from os import path
 
 
 d = path.abspath(path.dirname(__file__))
-with open(path.join(d, 'README.rst')) as f:
+with open(path.join(d, 'README.md')) as f:
     long_description = f.read()
 
 
