@@ -3,7 +3,7 @@ from os import path
 
 
 d = path.abspath(path.dirname(__file__))
-with open(path.join(d, 'README.rst')) as f:
+with open(path.join(d, 'README.md')) as f:
     long_description = f.read()
 
 
@@ -36,7 +36,7 @@ libpycades = Extension(
 
 setup(
     name='pycryptoprosdk',
-    version='1.0.0',
+    version='1.1.0-rc1',
     url='https://github.com/Keyintegrity/pycryptoprosdk',
     author='uishnik',
     author_email='uishnik@yandex.ru',

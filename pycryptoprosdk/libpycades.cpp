@@ -11,6 +11,7 @@
 #define MY_ENCODING_TYPE (PKCS_7_ASN_ENCODING | X509_ASN_ENCODING)
 #define CERT_NAME_STR_TYPE (CERT_X500_NAME_STR | CERT_NAME_STR_CRLF_FLAG)
 
+static PyObject* PyCryptoproException = NULL;
 static PyObject* CertDoesNotExist = NULL;
 
 // start helpers -------------------------------------------------------------------------------------------------------
@@ -200,13 +201,13 @@ static PyObject * CreateHash(PyObject *self, PyObject *args) {
     }
 
     if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_GOST_2012_256, CRYPT_VERIFYCONTEXT)) {
-        PyErr_SetString(PyExc_Exception, "CryptAcquireContext failed");
+        PyErr_SetString(PyCryptoproException, "CryptAcquireContext failed");
         return NULL;
     }
 
     if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)) {
         CryptReleaseContext(hProv, 0);
-        PyErr_SetString(PyExc_Exception, "CryptCreateHash failed");
+        PyErr_SetString(PyCryptoproException, "CryptCreateHash failed");
         return NULL;
     }
 
@@ -216,7 +217,7 @@ static PyObject * CreateHash(PyObject *self, PyObject *args) {
         CryptReleaseContext(hProv, 0);
         CryptDestroyHash(hHash);
 
-        PyErr_SetString(PyExc_Exception, "CryptHashData failed");
+        PyErr_SetString(PyCryptoproException, "CryptHashData failed");
         return NULL;
     }
 
@@ -227,7 +228,7 @@ static PyObject * CreateHash(PyObject *self, PyObject *args) {
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
 
-        PyErr_SetString(PyExc_Exception, "CryptGetHashParam failed");
+        PyErr_SetString(PyCryptoproException, "CryptGetHashParam failed");
         return NULL;
     }
 
@@ -289,7 +290,7 @@ static PyObject * GetCertByThumbprint(PyObject *self, PyObject *args) {
     DWORD nOutLen = 20;
 
     if (!CryptStringToBinary(thumbprint, 40, CRYPT_STRING_HEX, pDest, &nOutLen, 0, 0)) {
-        PyErr_SetString(PyExc_Exception, "CryptStringToBinary failed.");
+        PyErr_SetString(PyCryptoproException, "CryptStringToBinary failed.");
         return NULL;
     }
 
@@ -330,31 +331,31 @@ static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args) {
     hMsg = CryptMsgOpenToDecode(MY_ENCODING_TYPE, 0, 0, 0, 0, 0);
 
     if (!hMsg) {
-        PyErr_SetString(PyExc_Exception, "CryptMsgOpenToDecode failed.");
+        PyErr_SetString(PyCryptoproException, "CryptMsgOpenToDecode failed.");
         return NULL;
     }
 
     if (!CryptMsgUpdate(hMsg, pDecodedSignContent, signatureLength, FALSE)) {
-        PyErr_SetString(PyExc_Exception, "CryptMsgUpdate failed.");
+        PyErr_Format(PyCryptoproException, "CryptMsgUpdate failed (error 0x%x).", GetLastError());
         return NULL;
     }
 
     DWORD cbSignerCertInfo;
 
     if (!CryptMsgGetParam(hMsg, CMSG_SIGNER_CERT_INFO_PARAM, 0, NULL, &cbSignerCertInfo)) {
-        PyErr_SetString(PyExc_Exception, "CryptMsgGetParam #1 failed.");
+        PyErr_SetString(PyCryptoproException, "CryptMsgGetParam #1 failed.");
         return NULL;
     }
 
     PCERT_INFO pSignerCertInfo;
     if (!(pSignerCertInfo = (PCERT_INFO) malloc(cbSignerCertInfo)))
     {
-        PyErr_SetString(PyExc_Exception, "Memory allocation failed.");
+        PyErr_SetString(PyCryptoproException, "Memory allocation failed.");
         return NULL;
     }
 
     if (!CryptMsgGetParam(hMsg, CMSG_SIGNER_CERT_INFO_PARAM, 0, pSignerCertInfo, &cbSignerCertInfo)) {
-        PyErr_SetString(PyExc_Exception, "CryptMsgGetParam #2 failed.");
+        PyErr_SetString(PyCryptoproException, "CryptMsgGetParam #2 failed.");
         return NULL;
     }
 
@@ -362,14 +363,14 @@ static PyObject * GetSignerCertFromSignature(PyObject *self, PyObject *args) {
 
     hStoreHandle = CertOpenStore(CERT_STORE_PROV_MSG, MY_ENCODING_TYPE, 0, 0, hMsg);
     if (!hStoreHandle) {
-        PyErr_SetString(PyExc_Exception, "CertOpenStore failed.");
+        PyErr_SetString(PyCryptoproException, "CertOpenStore failed.");
         return NULL;
     }
 
     PCCERT_CONTEXT pSignerCertContext;
     pSignerCertContext = CertGetSubjectCertificateFromStore(hStoreHandle, MY_ENCODING_TYPE, pSignerCertInfo);
     if (!pSignerCertContext) {
-        PyErr_SetString(PyExc_Exception, "CertGetSubjectCertificateFromStore failed.");
+        PyErr_SetString(PyCryptoproException, "CertGetSubjectCertificateFromStore failed.");
         return NULL;
     }
 
@@ -398,7 +399,7 @@ static PyObject * InstallCertificate(PyObject *self, PyObject *args) {
     pCertContext = CertCreateCertificateContext(MY_ENCODING_TYPE, pDecodedCertData, certDataLength);
 
     if (!pCertContext) {
-        PyErr_SetString(PyExc_Exception, "Can't create cert context.");
+        PyErr_SetString(PyCryptoproException, "Can't create cert context.");
         return NULL;
     }
 
@@ -437,7 +438,7 @@ static PyObject * DeleteCertificate(PyObject *self, PyObject *args) {
     DWORD nOutLen = 20;
 
     if(!CryptStringToBinary(thumbprint, 40, CRYPT_STRING_HEX, pDest, &nOutLen, 0, 0)){
-        PyErr_SetString(PyExc_Exception, "CryptStringToBinary failed.");
+        PyErr_SetString(PyCryptoproException, "CryptStringToBinary failed.");
         return NULL;
     }
 
@@ -614,7 +615,7 @@ static PyObject * Sign(PyObject *self, PyObject *args) {
     pCertContext = CertFindCertificateInStore(hStoreHandle, MY_ENCODING_TYPE, 0, CERT_FIND_HASH, &para, NULL);
 
     if (!pCertContext) {
-        PyErr_Format(PyExc_ValueError, "CertFindCertificateInStore failed (error 0x%x).", GetLastError());
+        PyErr_SetString(CertDoesNotExist, "Could not find the desired certificate.");
         return NULL;
     }
 
@@ -698,7 +699,11 @@ PyMODINIT_FUNC PyInit_libpycades(void)
     PyObject *m;
     m = PyModule_Create(&libpycades);
 
-    CertDoesNotExist = PyErr_NewException("libpycades.CertDoesNotExist", NULL, NULL);
+    PyCryptoproException = PyErr_NewException("libpycades.PyCryptoproException", NULL, NULL);
+    Py_INCREF(PyCryptoproException);
+    PyModule_AddObject(m, "PyCryptoproException", PyCryptoproException);
+
+    CertDoesNotExist = PyErr_NewException("libpycades.CertDoesNotExist", PyCryptoproException, NULL);
     Py_INCREF(CertDoesNotExist);
     PyModule_AddObject(m, "CertDoesNotExist", CertDoesNotExist);
 

@@ -1,5 +1,8 @@
+import binascii
 from base64 import b64decode
+
 from pycryptoprosdk import libpycades
+from pycryptoprosdk.exceptions import PyCryptoproException
 
 
 class CryptoProSDK:
@@ -108,7 +111,10 @@ class CryptoProSDK:
         if isinstance(message, str):
             message = message.encode('utf-8')
         if decode_b64:
-            message = b64decode(message)
+            try:
+                message = b64decode(message)
+            except (binascii.Error, TypeError):
+                raise PyCryptoproException('Incorrect base64 string.') from None
         return message
 
 
@@ -141,17 +147,6 @@ class Subject(CertName):
         super(Subject, self).__init__(cert_name_string)
 
         self.personal_info = self.as_dict()
-        self.cn = self._get_field('CN')
-        self.inn_original = self._get_field('INN')
-        self.inn = self.inn_original
-        if len(self.inn_original) == 12 and self.inn_original[:2] == '00':
-            self.inn = self.inn_original[2:]
-        self.snils = self._get_field('SNILS')
-        self.city = self._get_field('L')
-        self.street = self._get_field('STREET')
-
-    def _get_field(self, name):
-        return self.personal_info.get(name, '')
 
 
 class Issuer(Subject):
