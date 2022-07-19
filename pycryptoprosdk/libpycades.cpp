@@ -472,6 +472,8 @@ static PyObject * Verify(PyObject *self, PyObject *args) {
     if (pVerifyInfo) {
         PyDict_SetItemString(res, "verificationStatus", PyLong_FromLong(pVerifyInfo->dwStatus));
         PyDict_SetItemString(res, "certInfo", GetCertInfo(pVerifyInfo->pSignerCert));
+        PyDict_SetItemString(res, "pSigningTime", FileTimeToPyDateTime(pVerifyInfo->pSigningTime));
+        PyDict_SetItemString(res, "pSignatureTimeStampTime", FileTimeToPyDateTime(pVerifyInfo->pSignatureTimeStampTime));
 
         if (pVerifyInfo->dwStatus == 0) {
             DWORD contentLength = 0;
@@ -544,6 +546,8 @@ static PyObject * VerifyDetached(PyObject *self, PyObject *args)
     if (pVerifyInfo) {
         PyDict_SetItemString(res, "verificationStatus", PyLong_FromLong(pVerifyInfo->dwStatus));
         PyDict_SetItemString(res, "certInfo", GetCertInfo(pVerifyInfo->pSignerCert));
+        PyDict_SetItemString(res, "pSigningTime", FileTimeToPyDateTime(pVerifyInfo->pSigningTime));
+        PyDict_SetItemString(res, "pSignatureTimeStampTime", FileTimeToPyDateTime(pVerifyInfo->pSignatureTimeStampTime));
 
         CadesFreeVerificationInfo(pVerifyInfo);
     }
