@@ -175,9 +175,14 @@ class VerificationInfoDetached:
         self._verification_info = verification_info
 
         self.verification_status = self._verification_info['verificationStatus']
-        self.signing_time = self._verification_info['signingTime']
+        self.signing_time = self._get_signing_time()
         self.cert = self._get_cert()
         self.error = self._verification_info['error']
+
+    def _get_signing_time(self):
+        if self.verification_status == -1:
+            return
+        return self._verification_info.get('signingTime')
 
     def _get_cert(self):
         if self.verification_status == -1:
