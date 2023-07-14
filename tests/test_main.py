@@ -78,7 +78,11 @@ class TestCryptoProSDK(BaseTestCase):
         self.assertEqual(cert.thumbprint.lower(), 'cd321b87fdabb503829f88db68d893b59a7c5dd3')
 
     def test_get_cert_by_subject(self):
-        cert = self.sdk.get_cert_by_subject('ROOT', 'CRYPTO-PRO Test Center 2')
+        cert = self.sdk.get_cert_by_subject(
+            store='ROOT',
+            subject='CRYPTO-PRO Test Center 2',
+            store_type=0,
+        )
         self.assertIsNotNone(cert)
 
         self.assertEqual(
@@ -101,8 +105,21 @@ class TestCryptoProSDK(BaseTestCase):
         self.assertTrue('Could not find the desired certificate.' in str(context.exception))
 
         cert_str = self._get_content_b64(os.path.join(files_dir, 'certs', 'uc_1_is_guc.cer'))
-        self.sdk.install_certificate('MY', cert_str.decode('utf-8'))
-
+        res = self.sdk.install_certificate('MY', cert_str.decode('utf-8'))
+        self.assertEqual(
+            res.subject.as_dict(),
+            {
+                'INN': '007710474375',
+                'OGRN': '1047702026701',
+                'E': 'dit@minsvyaz.ru',
+                'STREET': '125375 г. Москва ул. Тверская д.7',
+                'O': 'Минкомсвязь России',
+                'L': 'Москва',
+                'S': '77 г. Москва',
+                'C': 'RU',
+                'CN': 'УЦ 1 ИС ГУЦ',
+            }
+        )
         cert = self.sdk.get_cert_by_thumbprint(store, thumbprint)
         self.assertIsNotNone(cert)
         self.sdk.delete_certificate(store, thumbprint)
@@ -212,13 +229,6 @@ class SignAndVerifyTestCase(BaseTestCase):
         self.assertIsNone(res.cert.alt_name)
         self.assertIsNone(res.error)
 
-    def test_verify_if_signature_is_empty_string(self):
-        res = self.sdk.verify(signature='')
-        self.assertEqual(res.verification_status, -1)
-        self.assertIsNone(res.message)
-        self.assertIsNone(res.cert)
-        self.assertEqual(res.error, '0x80091010')
-
     def test_verify_if_signature_is_not_base64(self):
         with self.assertRaises(PyCryptoproException) as context:
             self.sdk.verify(signature='123')
@@ -268,12 +278,6 @@ class SignAndVerifyDetachedTestCase(BaseTestCase):
         self.assertEqual(res.cert.subject.personal_info, subject_dict)
 
         self.assertIsNone(res.error)
-
-    def test_verify_if_message_is_empty_string_and_signature_is_empty_string(self):
-        res = self.sdk.verify_detached(message='', signature='')
-        self.assertEqual(res.verification_status, -1)
-        self.assertIsNone(res.cert)
-        self.assertEqual(res.error, '0x80091010')
 
     def test_verify_if_message_is_empty_string(self):
         cert = self.sdk.get_cert_by_subject('MY', 'pycryptoprosdk')

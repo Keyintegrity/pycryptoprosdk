@@ -1,12 +1,19 @@
 import binascii
 from base64 import b64decode
+from typing import Union
 
 from pycryptoprosdk import libpycades
 from pycryptoprosdk.exceptions import PyCryptoproException
 
 
 class CryptoProSDK:
-    def sign(self, message, thumbprint, store='MY', detached=False):
+    def sign(
+            self,
+            message: Union[str, bytes],
+            thumbprint: str,
+            store: str = 'MY',
+            detached: bool = False,
+    ):
         """Создает подпись.
 
         :param message: подписываемое сообщение
@@ -18,7 +25,7 @@ class CryptoProSDK:
         message = self._prepare_message(message)
         return libpycades.sign(message, thumbprint, store, detached)
 
-    def verify(self, signature):
+    def verify(self, signature: Union[str, bytes]) -> 'VerificationInfo':
         """Верифицирует присоединенную подпись.
 
         :param signature: контент подписи, закодированный в base64
@@ -28,7 +35,11 @@ class CryptoProSDK:
         res = libpycades.verify(signature)
         return VerificationInfo(res)
 
-    def verify_detached(self, message, signature):
+    def verify_detached(
+            self,
+            message: Union[str, bytes],
+            signature: Union[str, bytes],
+    ) -> 'VerificationInfoDetached':
         """Верифицирует отсоединенную подпись.
 
         :param message: сообщение, для которого проверяется подпись
@@ -40,7 +51,11 @@ class CryptoProSDK:
         res = libpycades.verify_detached(message, signature)
         return VerificationInfoDetached(res)
 
-    def create_hash(self, message, alg):
+    def create_hash(
+            self,
+            message: Union[str, bytes],
+            alg: str,
+    ) -> str:
         """Вычисляет хэш сообщения по ГОСТу.
 
         :param message: сообщение
@@ -58,7 +73,12 @@ class CryptoProSDK:
 
         return libpycades.create_hash(self._prepare_message(message), alg)
 
-    def get_cert_by_subject(self, store, subject, store_type=0):
+    def get_cert_by_subject(
+            self,
+            store: str,
+            subject: str,
+            store_type: int = 0,
+    ) -> 'CertInfo':
         """Возвращает сертификат по subject.
 
         :param store: имя хранилища сертификатов
@@ -68,7 +88,12 @@ class CryptoProSDK:
         """
         return CertInfo(libpycades.get_cert_by_subject(store, subject, store_type))
 
-    def get_cert_by_thumbprint(self, store, thumbprint, store_type=0):
+    def get_cert_by_thumbprint(
+            self,
+            store: str,
+            thumbprint: str,
+            store_type: int = 0,
+    ) -> 'CertInfo':
         """Получает сертификат по отпечатку.
 
         :param store: имя хранилища сертификатов
@@ -78,7 +103,12 @@ class CryptoProSDK:
         """
         return CertInfo(libpycades.get_cert_by_thumbprint(store, thumbprint, store_type))
 
-    def install_certificate(self, store_name, cert_content, store_type=0):
+    def install_certificate(
+            self,
+            store_name: str,
+            cert_content: Union[str, bytes],
+            store_type: int = 0,
+    ) -> 'CertInfo':
         """Устанавливает сертификат в хранилище сертификатов.
 
         :param store_name: имя хранилища сертификатов
@@ -87,9 +117,14 @@ class CryptoProSDK:
         :return: объект CertInfo
         """
         cert_content = self._prepare_message(cert_content, decode_b64=True)
-        return libpycades.install_certificate(store_name, cert_content, store_type)
+        return CertInfo(libpycades.install_certificate(store_name, cert_content, store_type))
 
-    def delete_certificate(self, store_name, thumbprint, store_type=0):
+    def delete_certificate(
+            self,
+            store_name: str,
+            thumbprint: str,
+            store_type: int = 0,
+    ) -> None:
         """Удаляет сертификат из хранилища сертификатов.
 
         :param store_name: имя хранилища сертификатов
@@ -98,7 +133,10 @@ class CryptoProSDK:
         """
         libpycades.delete_certificate(store_name, thumbprint, store_type)
 
-    def get_signer_cert_from_signature(self, signature):
+    def get_signer_cert_from_signature(
+            self,
+            signature: Union[str, bytes],
+    ) -> 'CertInfo':
         """Извлекает сертификат подписанта из подписи.
 
         :param signature: контент подписи в base64
@@ -107,7 +145,11 @@ class CryptoProSDK:
         signature = self._prepare_message(signature, decode_b64=True)
         return CertInfo(libpycades.get_signer_cert_from_signature(signature))
 
-    def _prepare_message(self, message, decode_b64=False):
+    def _prepare_message(
+            self,
+            message: Union[str, bytes],
+            decode_b64: bool = False,
+    ) -> bytes:
         if isinstance(message, str):
             message = message.encode('utf-8')
         if decode_b64:
@@ -143,9 +185,8 @@ class CertName:
 
 
 class Subject(CertName):
-    def __init__(self, cert_name_string):
+    def __init__(self, cert_name_string: str):
         super(Subject, self).__init__(cert_name_string)
-
         self.personal_info = self.as_dict()
 
 
@@ -165,12 +206,12 @@ class CertInfo:
         alt_name = cert_info['altName']
         self.alt_name = CertName(alt_name) if alt_name else None
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         return self.cert_info
 
 
 class VerificationInfoDetached:
-    def __init__(self, verification_info):
+    def __init__(self, verification_info: dict):
         self._verification_info = verification_info
 
         self.verification_status = self._verification_info['verificationStatus']

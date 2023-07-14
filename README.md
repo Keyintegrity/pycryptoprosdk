@@ -90,7 +90,7 @@ cert = sdk.get_signer_cert_from_signature(signature_content)
 
 Установить тестовый сертификат:
 ```shell
-$ ./install_test_cert.sh
+$ make install-test-cert
 ```
 
 Запустить тесты:
