@@ -164,16 +164,26 @@ class GetSignerCertFromSignatureTestCase(BaseTestCase):
             'CN=pycryptoprosdk, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
         )
         subject_dict = cert.subject.as_dict()
-        self.assertEqual(subject_dict['CN'], 'pycryptoprosdk')
-        self.assertEqual(subject_dict['INN'], '123456789047')
-        self.assertEqual(subject_dict['OGRN'], '1123300000053')
-        self.assertEqual(subject_dict['SNILS'], '12345678901')
-        self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
-        self.assertEqual(subject_dict['L'], 'Город')
-
+        self.assertEqual(
+            subject_dict,
+            {
+                'CN': 'pycryptoprosdk',
+                'INN': '123456789047',
+                'OGRN': '1123300000053',
+                'SNILS': '12345678901',
+                'STREET': '"Улица, дом"',
+                'L': 'Город',
+            }
+        )
         self.assertEqual(cert.subject.personal_info, subject_dict)
-
         self.assertIsNone(cert.alt_name)
+        self.assertEqual(cert.subject.cn, 'pycryptoprosdk')
+        self.assertEqual(cert.subject.inn_original, '123456789047')
+        self.assertEqual(cert.subject.inn, '123456789047')
+        self.assertEqual(cert.subject.ogrn, '1123300000053')
+        self.assertEqual(cert.subject.snils, '12345678901')
+        self.assertEqual(cert.subject.street, '"Улица, дом"')
+        self.assertEqual(cert.subject.city, 'Город')
 
     def test_if_signature_is_empty_string(self):
         with self.assertRaises(PyCryptoproException) as context:

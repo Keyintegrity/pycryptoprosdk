@@ -170,10 +170,10 @@ class CertName:
     def __len__(self):
         return len(self.as_string())
 
-    def as_string(self):
+    def as_string(self) -> str:
         return self.cert_name.replace('\r\n', ', ')
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         data = {}
         for item in self.cert_name.split('\r\n'):
             try:
@@ -189,13 +189,46 @@ class Subject(CertName):
         super(Subject, self).__init__(cert_name_string)
         self.personal_info = self.as_dict()
 
+    @property
+    def cn(self) -> str:
+        return self._get_field('CN')
+
+    @property
+    def inn_original(self) -> str:
+        return self._get_field('INN')
+
+    @property
+    def inn(self) -> str:
+        if len(self.inn_original) == 12 and self.inn_original[:2] == '00':
+            return self.inn_original[2:]
+        return self.inn_original
+
+    @property
+    def snils(self) -> str:
+        return self._get_field('SNILS')
+
+    @property
+    def city(self) -> str:
+        return self._get_field('L')
+
+    @property
+    def street(self) -> str:
+        return self._get_field('STREET')
+
+    @property
+    def ogrn(self) -> str:
+        return self._get_field('OGRN')
+
+    def _get_field(self, field_name: str):
+        return self.personal_info.get(field_name, '')
+
 
 class Issuer(Subject):
     pass
 
 
 class CertInfo:
-    def __init__(self, cert_info):
+    def __init__(self, cert_info: dict):
         self.cert_info = cert_info
         self.subject = Subject(cert_info['subject'])
         self.issuer = Issuer(cert_info['issuer'])
