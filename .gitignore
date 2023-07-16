@@ -1,3 +1,5 @@
 .idea
 *.so
 build/
+docker/cpcsp/*
+!docker/cpcsp/.gitkeep
