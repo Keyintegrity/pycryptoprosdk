@@ -95,5 +95,5 @@ $ make install-test-cert
 
 Запустить тесты:
 ```shell
-$ python -m unittest
+$ make test
 ```

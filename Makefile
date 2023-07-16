@@ -16,3 +16,9 @@ install-test-cert:
         -rdn 'CN=pycryptoprosdk,INN=123456789047,OGRN=1123300000053,SNILS=12345678901,STREET="Улица, дом",L=Город' \
         -cont '\\.\HDIMAGE\cont'$$(uuidgen) \
         -sg -ku -du -ca http://cryptopro.ru/certsrv
+
+test:
+	python -m unittest
+
+docker-image:
+	docker build -f ./docker/Dockerfile -t pycryptoprosdk .
