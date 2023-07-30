@@ -5,7 +5,7 @@ from .store import (
     MCAStore,
     UMyStore,
     MMyStore,
-)
+)  # noqa
 from .signature import Signature
 from .signer import Signer
 from .hash import Hash

@@ -1,5 +1,6 @@
-from enum import Enum
 from base64 import b64decode
+from enum import Enum
+from functools import cached_property
 
 
 class StoreType(Enum):
@@ -29,14 +30,16 @@ class CertName:
         self.cert_name = cert_name_string
 
     def __repr__(self):
-        return self.as_string()
+        return self.as_string
 
     def __len__(self):
-        return len(self.as_string())
+        return len(self.as_string)
 
+    @cached_property
     def as_string(self) -> str:
         return self.cert_name.replace('\r\n', ', ')
 
+    @cached_property
     def as_dict(self) -> dict:
         data = {}
         for item in self.cert_name.split('\r\n'):
@@ -51,7 +54,6 @@ class CertName:
 class Subject(CertName):
     def __init__(self, cert_name_string: str):
         super(Subject, self).__init__(cert_name_string)
-        self.personal_info = self.as_dict()
 
     @property
     def cn(self) -> str:
@@ -84,7 +86,7 @@ class Subject(CertName):
         return self._get_field('OGRN')
 
     def _get_field(self, field_name: str):
-        return self.personal_info.get(field_name, '')
+        return self.as_dict.get(field_name, '')
 
 
 class Issuer(Subject):
@@ -115,7 +117,7 @@ class VerificationInfoDetached:
         self.cert = self._get_cert()
         self.error = self._verification_info['error']
 
-    def _get_cert(self):
+    def _get_cert(self) -> CertInfo | None:
         if self.verification_status == -1:
             return
         return CertInfo(self._verification_info['certInfo'])
@@ -127,7 +129,7 @@ class VerificationInfo(VerificationInfoDetached):
         message = self._verification_info['message']
         self.message = b64decode(message) if message else None
 
-    def _get_cert(self):
+    def _get_cert(self) -> CertInfo | None:
         if self.verification_status == -1:
             return
         return CertInfo(self._verification_info['certInfo'])
