@@ -48,8 +48,8 @@ result.verification_status
 # 10: Значение подписанного атрибута content-type не совпадает со значением, указанным в поле encapContentInfo.eContentType.
 
 # сертификат подписанта:
-result.cert.as_dict()
-{'CN': 'Ivan'}
+result.cert.cert_info
+{'subject': 'CN=pycryptoprosdk'}
 
 
 # создание хэша файла алгоритмом ГОСТ Р 34.11-94:

@@ -21,14 +21,14 @@ class SignAndVerifyTestCase(TestCase):
         self.assertEqual(res.message, b'qwerty')
 
         self.assertEqual(
-            res.cert.issuer.as_string,
+            res.cert.issuer.text,
             'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
         self.assertEqual(
-            res.cert.subject.as_string,
+            res.cert.subject.text,
             'CN=pycryptoprosdk, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
         )
-        subject_dict = res.cert.subject.as_dict
+        subject_dict = res.cert.subject.data
         self.assertEqual(subject_dict['CN'], 'pycryptoprosdk')
         self.assertEqual(subject_dict['INN'], '123456789047')
         self.assertEqual(subject_dict['OGRN'], '1123300000053')
@@ -36,7 +36,7 @@ class SignAndVerifyTestCase(TestCase):
         self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
         self.assertEqual(subject_dict['L'], 'Город')
 
-        self.assertEqual(res.cert.subject.as_dict, subject_dict)
+        self.assertEqual(res.cert.subject.data, subject_dict)
 
         self.assertIsNone(res.cert.alt_name)
         self.assertIsNone(res.error)
@@ -78,7 +78,7 @@ class SignAndVerifyTestCase(TestCase):
     # def test_get_signer_alt_name_from_signature(self):
     #     signature_content = self._get_content(os.path.join(files_dir, 'signatures', 'test_alt_name.txt.sig'))
     #     cert = Signature().get_signer_cert(signature_content)
-    #     self.assertDictEqual(cert.alt_name.as_dict(), {'OGRNIP': '123456789012345'})
+    #     self.assertDictEqual(cert.alt_name.data, {'OGRNIP': '123456789012345'})
 
 
 class SignAndVerifyDetachedTestCase(TestCase):
@@ -93,14 +93,14 @@ class SignAndVerifyDetachedTestCase(TestCase):
         self.assertIsNotNone(res.cert)
 
         self.assertEqual(
-            res.cert.issuer.as_string,
+            res.cert.issuer.text,
             'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
         self.assertEqual(
-            res.cert.subject.as_string,
+            res.cert.subject.text,
             'CN=pycryptoprosdk, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
         )
-        subject_dict = res.cert.subject.as_dict
+        subject_dict = res.cert.subject.data
         self.assertEqual(subject_dict['CN'], 'pycryptoprosdk')
         self.assertEqual(subject_dict['INN'], '123456789047')
         self.assertEqual(subject_dict['OGRN'], '1123300000053')
@@ -108,7 +108,7 @@ class SignAndVerifyDetachedTestCase(TestCase):
         self.assertEqual(subject_dict['STREET'], '"Улица, дом"')
         self.assertEqual(subject_dict['L'], 'Город')
 
-        self.assertEqual(res.cert.subject.as_dict, subject_dict)
+        self.assertEqual(res.cert.subject.data, subject_dict)
         self.assertIsNone(res.error)
 
     def test_verify_if_message_is_empty_string(self):
@@ -148,14 +148,14 @@ class GetSignerCertFromSignatureTestCase(TestCase):
         cert = Signature().get_signer_cert(signature)
 
         self.assertEqual(
-            cert.issuer.as_string,
+            cert.issuer.text,
             'E=support@cryptopro.ru, C=RU, L=Moscow, O=CRYPTO-PRO LLC, CN=CRYPTO-PRO Test Center 2'
         )
         self.assertEqual(
-            cert.subject.as_string,
+            cert.subject.text,
             'CN=pycryptoprosdk, INN=123456789047, OGRN=1123300000053, SNILS=12345678901, STREET="Улица, дом", L=Город'
         )
-        subject_dict = cert.subject.as_dict
+        subject_dict = cert.subject.data
         self.assertEqual(
             subject_dict,
             {
@@ -167,7 +167,7 @@ class GetSignerCertFromSignatureTestCase(TestCase):
                 'L': 'Город',
             }
         )
-        self.assertEqual(cert.subject.as_dict, subject_dict)
+        self.assertEqual(cert.subject.data, subject_dict)
         self.assertIsNone(cert.alt_name)
         self.assertEqual(cert.subject.cn, 'pycryptoprosdk')
         self.assertEqual(cert.subject.inn_original, '123456789047')

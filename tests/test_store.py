@@ -13,7 +13,7 @@ class MRootStoreTestCase(TestCase):
     def test_get_cert_by_subject(self):
         res = URootStore().get_cert_by_subject(subject='CryptoPro GOST Root CA')
         self.assertEqual(
-            res.subject.as_dict,
+            res.subject.data,
             {
                 'OGRN': '1037700085444',
                 'INN': '007717107991',
@@ -25,7 +25,7 @@ class MRootStoreTestCase(TestCase):
             }
         )
         self.assertEqual(
-            res.issuer.as_dict,
+            res.issuer.data,
             {
                 'OGRN': '1037700085444',
                 'INN': '007717107991',
@@ -57,7 +57,7 @@ class UMyStoreTestCase(TestCase):
         cert_str = get_content_b64(os.path.join(files_dir, 'certs', 'uc_1_is_guc.cer'))
         res = UMyStore().install_certificate(cert_str.decode('utf-8'))
         self.assertEqual(
-            res.subject.as_dict,
+            res.subject.data,
             {
                 'INN': '007710474375',
                 'OGRN': '1047702026701',

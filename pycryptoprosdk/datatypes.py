@@ -30,17 +30,17 @@ class CertName:
         self.cert_name = cert_name_string
 
     def __repr__(self):
-        return self.as_string
+        return self.text
 
     def __len__(self):
-        return len(self.as_string)
+        return len(self.text)
 
     @cached_property
-    def as_string(self) -> str:
+    def text(self) -> str:
         return self.cert_name.replace('\r\n', ', ')
 
     @cached_property
-    def as_dict(self) -> dict:
+    def data(self) -> dict:
         data = {}
         for item in self.cert_name.split('\r\n'):
             try:
@@ -86,7 +86,7 @@ class Subject(CertName):
         return self._get_field('OGRN')
 
     def _get_field(self, field_name: str):
-        return self.as_dict.get(field_name, '')
+        return self.data.get(field_name, '')
 
 
 class Issuer(Subject):
@@ -104,9 +104,6 @@ class CertInfo:
 
         alt_name = cert_info['altName']
         self.alt_name = CertName(alt_name) if alt_name else None
-
-    def as_dict(self) -> dict:
-        return self.cert_info
 
 
 class VerificationInfoDetached:
